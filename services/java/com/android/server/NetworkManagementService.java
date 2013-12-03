@@ -1116,7 +1116,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
 
     @Override
     public void startAccessPoint(
-            WifiConfiguration wifiConfig, String wlanIface) {
+            WifiConfiguration wifiConfig, String wlanIface, String softapIface) {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
             if (mContext.getResources().getBoolean(
@@ -1128,11 +1128,10 @@ public class NetworkManagementService extends INetworkManagementService.Stub
                 mConnector.execute("softap", "start", wlanIface);
             }
             if (wifiConfig == null) {
-                mConnector.execute("softap", "set", wlanIface);
+                mConnector.execute("softap", "set", wlanIface, softapIface);
             } else {
-                mConnector.execute("softap", "set", wlanIface, wifiConfig.SSID,
-                                   "broadcast", "6", getSecurityType(wifiConfig),
-                                   new SensitiveArg(wifiConfig.preSharedKey));
+                mConnector.execute("softap", "set", wlanIface, softapIface, wifiConfig.SSID,
+                        getSecurityType(wifiConfig), new SensitiveArg(wifiConfig.preSharedKey));
             }
             mConnector.execute("softap", "startap");
         } catch (NativeDaemonConnectorException e) {
@@ -1167,6 +1166,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
             mConnector.execute("softap", "stopap");
+            mConnector.execute("softap", "stop", wlanIface);
             wifiFirmwareReload(wlanIface, "STA");
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
@@ -1174,15 +1174,14 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     }
 
     @Override
-    public void setAccessPoint(WifiConfiguration wifiConfig, String wlanIface) {
+    public void setAccessPoint(WifiConfiguration wifiConfig, String wlanIface, String softapIface) {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
             if (wifiConfig == null) {
-                mConnector.execute("softap", "set", wlanIface);
+                mConnector.execute("softap", "set", wlanIface, softapIface);
             } else {
-                mConnector.execute("softap", "set", wlanIface, wifiConfig.SSID,
-                                   "broadcast", "6", getSecurityType(wifiConfig),
-                                   new SensitiveArg(wifiConfig.preSharedKey));
+                mConnector.execute("softap", "set", wlanIface, softapIface, wifiConfig.SSID,
+                        getSecurityType(wifiConfig), new SensitiveArg(wifiConfig.preSharedKey));
             }
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
