@@ -216,9 +216,7 @@ public class StorageVolume implements Parcelable {
             return -1;
         }
         try {
-            // Integer is too small for UUID, for example "FEDC-BA98"
-            Long uuid = Long.parseLong(mUuid.replace("-", ""), 16);
-            return uuid.intValue();
+            return Integer.parseInt(mUuid.replace("-", ""), 16);
         } catch (NumberFormatException e) {
             return -1;
         }
