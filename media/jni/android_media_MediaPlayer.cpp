@@ -36,7 +36,7 @@
 #include "utils/KeyedVector.h"
 #include "utils/String8.h"
 #include "android_media_Utils.h"
-#ifdef QCOM_HARDWARE
+#ifdef QCOM_HARDWARE_EXT
 #include "android_media_ExtMediaPlayer.h"
 #endif
 
@@ -651,7 +651,7 @@ android_media_MediaPlayer_native_setup(JNIEnv *env, jobject thiz, jobject weak_t
     // create new listener and give it to MediaPlayer
     sp<JNIMediaPlayerListener> listener = new JNIMediaPlayerListener(env, thiz, weak_this);
     mp->setListener(listener);
-#ifdef QCOM_HARDWARE
+#ifdef QCOM_HARDWARE_EXT
     if (JNIExtMediaPlayerListener::checkExtMedia(env, thiz)) {
       ALOGD("QCMediaPlayer mediaplayer present");
        sp<JNIExtMediaPlayerListener> extmedialistener = new JNIExtMediaPlayerListener(
