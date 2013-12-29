@@ -109,7 +109,7 @@ void JNIExtMediaPlayerListener::notify(int msg, int ext1, int ext2, const Parcel
     if (mParcel != NULL)
     {
       if((extfields.ext_post_event != NULL) &&
-         ((msg == MEDIA_PREPARED) || (msg == MEDIA_TIMED_TEXT) || (msg == MEDIA_QOE)))
+         ((msg == MEDIA_PREPARED) || (msg == MEDIA_TIMED_TEXT) ))
       {
         ALOGE("JNIExtMediaPlayerListener::notify calling ext_post_event");
         if (ext2 == 1 && (msg == MEDIA_TIMED_TEXT))
@@ -144,7 +144,7 @@ void JNIExtMediaPlayerListener::notify(int msg, int ext1, int ext2, const Parcel
   else
   {
     if((extfields.ext_post_event != NULL) &&
-       ((msg == MEDIA_PREPARED) || (msg == MEDIA_TIMED_TEXT) ||(msg == MEDIA_QOE)))
+       ((msg == MEDIA_PREPARED) || (msg == MEDIA_TIMED_TEXT) ))
     {
       ALOGD("JNIExtMediaPlayerListener::notify calling ext_post_events");
       env->CallStaticVoidMethod(mClass, extfields.ext_post_event, mObject, msg, ext1, ext2, NULL);
