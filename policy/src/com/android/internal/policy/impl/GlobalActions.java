@@ -18,6 +18,7 @@ package com.android.internal.policy.impl;
 
 import com.android.internal.app.AlertController;
 import com.android.internal.app.AlertController.AlertParams;
+import com.android.internal.app.ThemeUtils;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.R;
@@ -26,18 +27,22 @@ import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.UserInfo;
+import android.content.ServiceConnection;
 import android.database.ContentObserver;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -69,20 +74,8 @@ import android.widget.ImageView.ScaleType;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.android.internal.app.ThemeUtils;
-
 import java.util.ArrayList;
 import java.util.List;
-
-/**
- * Needed for takeScreenshot
- */
-import android.content.ServiceConnection;
-import android.content.ComponentName;
-import android.os.IBinder;
-import android.os.Messenger;
-import android.os.RemoteException;
-
 
 /**
  * Helper to show the global actions dialog.  Each item is an {@link Action} that
@@ -352,7 +345,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                 public boolean showBeforeProvisioning() {
                     return true;
                 }
-            });        
+            });
 
         // next: airplane mode
         mItems.add(mAirplaneModeOn);
@@ -493,8 +486,8 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
     }
 
    /**
-     * functions needed for taking screenhots.  
-     * This leverages the built in ICS screenshot functionality 
+     * functions needed for taking screenhots.
+     * This leverages the built in ICS screenshot functionality
      */
     final Object mScreenshotLock = new Object();
     ServiceConnection mScreenshotConnection = null;
@@ -549,14 +542,14 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
                             msg.arg1 = 1;
                         if (mNavigationBar != null && mNavigationBar.isVisibleLw())
                             msg.arg2 = 1;
-                         */                        
+                         */
 
                         /* wait for the dialog box to close */
                         try {
-                            Thread.sleep(1000); 
+                            Thread.sleep(1000);
                         } catch (InterruptedException ie) {
                         }
-                        
+
                         /* take the screenshot */
                         try {
                             messenger.send(msg);
@@ -573,7 +566,7 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
             }
         }
     }
-    
+
     private void prepareDialog() {
         refreshSilentMode();
         mAirplaneModeOn.updateState(mAirplaneState);
