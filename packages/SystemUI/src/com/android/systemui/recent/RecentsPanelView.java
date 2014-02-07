@@ -146,9 +146,6 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
         public void onRecentsPanelVisibilityChanged(boolean visible);
     }
 
-    private int mDragPositionX;
-    private int mDragPositionY;
-
     public static interface RecentsScrollView {
         public int numItemsInOneScreenful();
         public void setAdapter(TaskDescriptionAdapter adapter);
