@@ -7132,6 +7132,21 @@ public final class Settings {
         public static final String VOLUME_WAKE_SCREEN = "volume_wake_screen";
 
         /**
+         * Location mode toggle
+         * 1 - LOCATION_MODE_OFF / LOCATION_MODE_SENSORS_ONLY / LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_HIGH_ACCURACY
+         * 2 - LOCATION_MODE_HIGH_ACCURACY / LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_SENSORS_ONLY
+         * 3 - LOCATION_MODE_HIGH_ACCURACY / LOCATION_MODE_BATTERY_SAVING
+         * 4 - LOCATION_MODE_HIGH_ACCURACY / LOCATION_MODE_SENSORS_ONLY
+         * 5 - LOCATION_MODE_HIGH_ACCURACY / LOCATION_MODE_OFF
+         * 6 - LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_SENSORS_ONLY / LOCATION_MODE_OFF
+         * 7 - LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_SENSORS_ONLY
+         * 8 - LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_OFF
+         * 9 - LOCATION_MODE_SENSORS_ONLY / LOCATION_MODE_OFF
+         * @hide
+         */
+        public static final String LOCATION_MODES_TOGGLE = "location_modes_toggle";
+
+        /**
          * Whether to enable the navbar for hw key devices
          * @hide
          */
@@ -7271,6 +7286,48 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_BATTERY_STYLE = "status_bar_battery_style";
+
+        /**
+         * Enable looking up of phone numbers of nearby places
+         *
+         * @hide
+         */
+        public static final String ENABLE_FORWARD_LOOKUP = "enable_forward_lookup";
+
+        /**
+         * Enable looking up of phone numbers of people
+         *
+         * @hide
+         */
+        public static final String ENABLE_PEOPLE_LOOKUP = "enable_people_lookup";
+
+        /**
+         * Enable looking up of information of phone numbers not in the contacts
+         *
+         * @hide
+         */
+        public static final String ENABLE_REVERSE_LOOKUP = "enable_reverse_lookup";
+
+        /**
+         * The forward lookup provider
+         *
+         * @hide
+         */
+        public static final String FORWARD_LOOKUP_PROVIDER = "forward_lookup_provider";
+
+        /**
+         * The people lookup provider
+         *
+         * @hide
+         */
+        public static final String PEOPLE_LOOKUP_PROVIDER = "people_lookup_provider";
+
+        /**
+         * The reverse lookup provider
+         *
+         * @hide
+         */
+        public static final String REVERSE_LOOKUP_PROVIDER = "reverse_lookup_provider";
 
     }
 
