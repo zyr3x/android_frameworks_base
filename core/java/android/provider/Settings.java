@@ -54,7 +54,6 @@ import android.text.TextUtils;
 import android.util.AndroidException;
 import android.util.Log;
 
-import com.android.internal.util.cm.LockscreenBackgroundUtil;
 import com.android.internal.widget.ILockSettings;
 
 import java.net.URISyntaxException;
@@ -2772,6 +2771,14 @@ public final class Settings {
          */
         public static final String QUICK_SETTINGS_TILES = "quick_settings_tiles";
 
+
+        /**
+         * Quick Settings show small icons
+         *
+         * @hide
+         */
+        public static final String QUICK_SETTINGS_SMALL_ICONS = "qs_small_icons";
+
         /**
          * Enable looking up of phone numbers of nearby places
          *
@@ -3244,14 +3251,6 @@ public final class Settings {
          * @hide
          */
         public static final String QUIET_HOURS_DIM = "quiet_hours_dim";
-
-        /**
-         * Sets the lockscreen background style. Integer.
-         * @see LockscreenBackgroundUtil#LOCKSCREEN_STYLE_DEFAULT
-         * @see LockscreenBackgroundUtil#LOCKSCREEN_STYLE_IMAGE
-         * @hide
-         */
-        public static final String LOCKSCREEN_BACKGROUND_STYLE = "lockscreen_background_style";
 
          /**
          * Action for long-pressing back button on lock screen

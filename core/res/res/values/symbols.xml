@@ -533,6 +533,8 @@
   <java-symbol type="string" name="emergency_call_dialog_number_for_display" />
   <java-symbol type="string" name="widget_default_package_name" />
   <java-symbol type="string" name="widget_default_class_name" />
+  <java-symbol type="string" name="config_keyguardPackage" />
+  <java-symbol type="string" name="config_keyguardService" />
   <java-symbol type="string" name="emergency_calls_only" />
   <java-symbol type="string" name="enable_accessibility_canceled" />
   <java-symbol type="string" name="eventTypeAnniversary" />
@@ -650,7 +652,6 @@
   <java-symbol type="string" name="orgTypeWork" />
   <java-symbol type="string" name="passwordIncorrect" />
   <java-symbol type="string" name="enablePin" />
-  <java-symbol type="string" name="permission" />
   <java-symbol type="string" name="perms_description_app" />
   <java-symbol type="string" name="perms_new_perm_prefix" />
   <java-symbol type="string" name="petabyteShort" />
@@ -1482,6 +1483,7 @@
   <java-symbol type="bool" name="config_animateScreenLights" />
   <java-symbol type="bool" name="config_automatic_brightness_available" />
   <java-symbol type="bool" name="config_enableFusedLocationOverlay" />
+  <java-symbol type="bool" name="config_enableHwFlpOverlay" />
   <java-symbol type="bool" name="config_enableGeocoderOverlay" />
   <java-symbol type="bool" name="config_enableGeofenceOverlay" />
   <java-symbol type="bool" name="config_enableNetworkLocationOverlay" />
@@ -1578,7 +1580,8 @@
   <java-symbol type="string" name="config_geocoderProviderPackageName" />
   <java-symbol type="string" name="config_geofenceProviderPackageName" />
   <java-symbol type="string" name="config_networkLocationProviderPackageName" />
-  <java-symbol type="string" name="config_geofenceProvider" />
+  <java-symbol type="string" name="config_geofenceServicesProvider" />
+  <java-symbol type="string" name="config_comboNetworkLocationProvider" />
   <java-symbol type="string" name="config_wimaxManagerClassname" />
   <java-symbol type="string" name="config_wimaxNativeLibLocation" />
   <java-symbol type="string" name="config_wimaxServiceClassname" />
@@ -1822,6 +1825,7 @@
   <java-symbol type="bool" name="config_hasRemovableLid" />
   <java-symbol type="string" name="config_deviceKeyHandlerLib" />
   <java-symbol type="string" name="config_deviceKeyHandlerClass" />
+  <java-symbol type="bool" name="config_batterySdCardAccessibility" />
 
   <!-- Telephony -->
   <java-symbol type="bool" name="config_smsSamsungCdmaAlternateMessageIDEncoding" />
@@ -2000,4 +2004,7 @@
 
   <!-- SMS RIL_REQUEST_SEND_SMS_EXPECT_MORE -->
   <java-symbol type="bool" name="config_smsUseExpectMore" />
+
+  <!-- Label for the Android system components when they are shown to the user. -->
+  <java-symbol type="string" name="android_system_label" />
 </resources>

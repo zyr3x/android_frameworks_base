@@ -299,6 +299,13 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     private static final long PACKAGE_HASH_EXPIRATION = 3*60*1000; // 3 minutes
 
+    /**
+     * IDMAP hash version code used to alter the resulting hash and force recreating
+     * of the idmap.  This value should be changed whenever there is a need to force
+     * an update to all idmaps.
+     */
+    private static final byte IDMAP_HASH_VERSION = 1;
+
     final HandlerThread mHandlerThread = new HandlerThread("PackageManager",
             Process.THREAD_PRIORITY_BACKGROUND);
     final PackageHandler mHandler;
@@ -1263,7 +1270,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     Slog.w(TAG, "No BOOTCLASSPATH found!");
                 }
 
-                final boolean[] didDexOpt = {false};
+                boolean didDexOpt = false;
 
                 /**
                  * Ensure all external libraries have had dexopt run on them.
@@ -1278,12 +1285,13 @@ public class PackageManagerService extends IPackageManager.Stub {
                         }
                         try {
                             if (dalvik.system.DexFile.isDexOptNeeded(lib)) {
+                                alreadyDexOpted.add(lib);
+                                didDexOpt = true;
+
                                 executorService.submit(new Runnable() {
                                     @Override
                                     public void run() {
-                                        alreadyDexOpted.add(lib);
                                         mInstaller.dexopt(lib, Process.SYSTEM_UID, true);
-                                        didDexOpt[0] = true;
                                     }
                                 });
                             }
@@ -1334,11 +1342,12 @@ public class PackageManagerService extends IPackageManager.Stub {
                         }
                         try {
                             if (dalvik.system.DexFile.isDexOptNeeded(path)) {
+                                didDexOpt = true;
+
                                 executorService.submit(new Runnable() {
                                     @Override
                                     public void run() {
                                         mInstaller.dexopt(path, Process.SYSTEM_UID, true);
-                                        didDexOpt[0] = true;
                                     }
                                 });
                             }
@@ -1356,7 +1365,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                     }
                 }
 
-                if (didDexOpt[0]) {
+                if (didDexOpt) {
                     File dalvikCacheDir = new File(dataDir, "dalvik-cache");
 
                     // If we had to do a dexopt of one of the previous
@@ -5649,7 +5658,8 @@ public class PackageManagerService extends IPackageManager.Stub {
         byte[] md5 = getFileMd5Sum(pkg.mPath);
         if (md5 == null) return 0;
 
-        p = new Pair(Arrays.hashCode(md5), System.currentTimeMillis());
+        p = new Pair(Arrays.hashCode(ByteBuffer.wrap(md5).put(IDMAP_HASH_VERSION).array()),
+                System.currentTimeMillis());
         mPackageHashes.put(pkg.packageName, p);
         return p.first;
     }
