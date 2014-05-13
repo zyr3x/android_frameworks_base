@@ -69,6 +69,12 @@ public class ThemesContract {
         public static final String LOCKSCREEN_URI = "lockscreen_uri";
 
         /**
+         * URI to an image that shows the style (aka skin) with theme applied
+         * <P>Type: TEXT</P>
+         */
+        public static final String STYLE_URI = "style_uri";
+
+        /**
          * TODO: Figure structure for actual animation instead of static
          * URI to an image of the boot_anim.
          * <P>Type: TEXT</P>
@@ -222,6 +228,7 @@ public class ThemesContract {
         public static final String KEY_STATUS_BAR = "mixnmatch_status_bar";
         public static final String KEY_BOOT_ANIM = "mixnmatch_boot_anim";
         public static final String KEY_FONT = "mixnmatch_font";
+        public static final String KEY_ALARM = "mixnmatch_alarm";
         public static final String KEY_NOTIFICATIONS = "mixnmatch_notifications";
         public static final String KEY_RINGTONE = "mixnmatch_ringtone";
         public static final String KEY_OVERLAYS = "mixnmatch_overlays";
@@ -234,6 +241,7 @@ public class ThemesContract {
             KEY_FONT,
             KEY_NOTIFICATIONS,
             KEY_RINGTONE,
+            KEY_ALARM,
             KEY_OVERLAYS
         };
 
@@ -281,8 +289,12 @@ public class ThemesContract {
                 return MixnMatchColumns.KEY_FONT;
             } else if (component.equals(ThemesColumns.MODIFIES_BOOT_ANIM)) {
                 return MixnMatchColumns.KEY_BOOT_ANIM;
+            } else if (component.equals(ThemesColumns.MODIFIES_ALARMS)) {
+                return MixnMatchColumns.KEY_ALARM;
             } else if (component.equals(ThemesColumns.MODIFIES_NOTIFICATIONS)) {
                 return MixnMatchColumns.KEY_NOTIFICATIONS;
+            } else if (component.equals(ThemesColumns.MODIFIES_RINGTONES)) {
+                return MixnMatchColumns.KEY_RINGTONE;
             } else if (component.equals(ThemesColumns.MODIFIES_OVERLAYS)) {
                 return MixnMatchColumns.KEY_OVERLAYS;
             }
@@ -304,8 +316,12 @@ public class ThemesContract {
                 return ThemesColumns.MODIFIES_FONTS;
             } else if (mixnmatchKey.equals(MixnMatchColumns.KEY_BOOT_ANIM)) {
                 return ThemesColumns.MODIFIES_BOOT_ANIM;
+            } else if (mixnmatchKey.equals(MixnMatchColumns.KEY_ALARM)) {
+                return ThemesColumns.MODIFIES_ALARMS;
             } else if (mixnmatchKey.equals(MixnMatchColumns.KEY_NOTIFICATIONS)) {
                 return ThemesColumns.MODIFIES_NOTIFICATIONS;
+            } else if (mixnmatchKey.equals(MixnMatchColumns.KEY_RINGTONE)) {
+                return ThemesColumns.MODIFIES_RINGTONES;
             } else if (mixnmatchKey.equals(MixnMatchColumns.KEY_OVERLAYS)) {
                 return ThemesColumns.MODIFIES_OVERLAYS;
             }

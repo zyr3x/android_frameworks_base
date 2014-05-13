@@ -7274,6 +7274,8 @@ public final class Settings {
         public static final String REBOOT_MODE_OPTIONS = "reboot_mode_options";
         /** Screenshot Menu Options */
         public static final String SCREENSHOT_MODE_OPTIONS = "screenshot_mode_options";
+        /** Screenrecord Menu Options */
+        public static final String SCREENRECORD_MODE_OPTIONS = "screenrecord_mode_options";
 
         /**
          * Volume Adjust Sounds Enable, This is the noise made when using volume hard buttons
@@ -7305,6 +7307,41 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_BATTERY_STYLE = "status_bar_battery_style";
+
+        /**
+         * How long to keep the notification LED on (in milliseconds)
+         *
+         * @hide
+         */
+        public static final String NOTIFICATION_LIGHT_ON = "notification_light_on";
+
+        /**
+         * How long to keep the notification LED off (in milliseconds)
+         *
+         * @hide
+         */
+        public static final String NOTIFICATION_LIGHT_OFF = "notification_light_off";
+
+        /**
+         * What color to use for the notificaion LED
+         *
+         * @hide
+         */
+        public static final String NOTIFICATION_LIGHT_COLOR = "notification_light_color";
+
+        /**
+         * Whether to blink the LED when screen is on
+         *
+         * @hide
+         */
+        public static final String LED_SCREEN_ON = "led_screen_on";
+
+        /**
+         * Custom string for package;color|pacakge;color
+         * so we can change custom colors per app
+         * @hide
+         */
+        public static final String LED_CUSTOM_VALUES = "led_custom_values";
 
         /**
          * Enable looking up of phone numbers of nearby places
@@ -7356,6 +7393,111 @@ public final class Settings {
          * @hide
          */
         public static final String VOLUME_KEY_CURSOR_CONTROL = "volume_key_cursor_control";
+ 
+        /**
+         *
+         * Smooth Progress Bar Mirror
+         * @hide
+         */
+         public static final String PROGRESSBAR_MIRROR = "progressbar_mirror";
+
+        /**
+         *
+         * Smooth Progress Bar Reverse
+         * @hide
+         */
+         public static final String PROGRESSBAR_REVERSE = "progressbar_reverse";
+
+        /**
+         *
+         * Smooth Progress Bar Speed
+         * @hide
+         */
+         public static final String PROGRESSBAR_SPEED = "progressbar_speed";
+
+        /**
+         *
+         * Smooth Progress Bar Width
+         * @hide
+         */
+         public static final String PROGRESSBAR_WIDTH = "progressbar_width";
+
+         /**
+         *
+         * Smooth Progress Bar Length
+         * @hide
+         */
+         public static final String PROGRESSBAR_LENGTH = "progressbar_length";
+
+         /**
+         *
+         * Smooth Progress Bar Count
+         * @hide
+         */
+         public static final String PROGRESSBAR_COUNT = "progressbar_count";
+
+         /**
+         *
+         * Smooth Progress Bar Color_1
+         * @hide
+         */
+         public static final String PROGRESSBAR_COLOR_1 = "progressbar_color_1";
+
+         /**
+         *
+         * Smooth Progress Bar Color_2
+         * @hide
+         */
+         public static final String PROGRESSBAR_COLOR_2 = "progressbar_color_2";
+
+         /**
+         *
+         * Smooth Progress Bar Color_3
+         * @hide
+         */
+         public static final String PROGRESSBAR_COLOR_3 = "progressbar_color_3";
+
+         /**
+         *
+         * Smooth Progress Bar Color_4
+         * @hide
+         */
+         public static final String PROGRESSBAR_COLOR_4 = "progressbar_color_4";
+
+        /**
+        * ToastAnimations
+        * @hide
+        */
+        public static final String TOAST_ANIMATION = "toast_animation";
+
+        /**
+         * ListView Animations
+         * 0 == None
+         * 1 == Wave (Left)
+         * 2 == Wave (Right)
+         * 3 == Scale
+         * 4 == Alpha
+         * 5 == Stack (Top)
+         * 6 == Stack (Bottom)
+         * 7 == Translate (Left)
+         * 8 == Translate (Right)
+         * @hide
+         */
+        public static final String LISTVIEW_ANIMATION = "listview_animation";
+
+        /**
+         * ListView Interpolators
+         * 0 == None
+         * 1 == accelerate_interpolator
+         * 2 == decelerate_interpolator
+         * 3 == accelerate_decelerate_interpolator
+         * 4 == anticipate_interpolator
+         * 5 == overshoot_interpolator
+         * 6 == anticipate_overshoot_interpolator
+         * 7 == bounce_interpolator
+         * @hide
+         */
+        public static final String LISTVIEW_INTERPOLATOR = "listview_interpolator";
 
     }
 

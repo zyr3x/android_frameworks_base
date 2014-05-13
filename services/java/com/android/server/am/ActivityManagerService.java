@@ -9188,7 +9188,7 @@ public final class ActivityManagerService extends ActivityManagerNative
 
     public boolean testIsSystemReady() {
         // no need to synchronize(this) just to read & return the value
-        return mSystemReady;
+        return mSystemReady && mProcessesReady;
     }
 
     private static File getCalledPreBootReceiversFile() {
@@ -12499,6 +12499,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         app.foregroundActivities = false;
         app.hasShownUi = false;
         app.hasAboveClient = false;
+        app.hasClientActivities = false;
 
         mServices.killServicesLocked(app, allowRestart);
 
@@ -14070,6 +14071,9 @@ public final class ActivityManagerService extends ActivityManagerNative
         Configuration ci;
         synchronized(this) {
             ci = new Configuration(mConfiguration);
+            if (ci.customTheme == null) {
+                ci.customTheme = CustomTheme.getBootTheme(mContext.getContentResolver());
+            }
         }
         return ci;
     }
