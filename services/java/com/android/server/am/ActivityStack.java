@@ -77,7 +77,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.Slog;
 import android.view.Display;
-import com.android.internal.app.ActivityTrigger;
+//import com.android.internal.app.ActivityTrigger;
 import android.view.IWindowManager;
 import android.view.WindowManagerGlobal;
 
