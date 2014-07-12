@@ -529,7 +529,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
                      * Format: "NNN Address updated <addr> <iface> <flags> <scope>"
                      *         "NNN Address removed <addr> <iface> <flags> <scope>"
                      */
-                    if (cooked.length < 7 || !cooked[1].equals("Address")) {
+                    if (cooked.length < 6 || !cooked[1].equals("Address")) {
                         throw new IllegalStateException(errorMessage);
                     }
 
@@ -1028,15 +1028,6 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         }
     }
 
-    private List<InterfaceAddress> excludeLinkLocal(List<InterfaceAddress> addresses) {
-        ArrayList<InterfaceAddress> filtered = new ArrayList<InterfaceAddress>(addresses.size());
-        for (InterfaceAddress ia : addresses) {
-            if (!ia.getAddress().isLinkLocalAddress())
-                filtered.add(ia);
-        }
-        return filtered;
-    }
-
     private void modifyNat(String action, String internalInterface, String externalInterface)
             throws SocketException {
         final Command cmd = new Command("nat", action, internalInterface, externalInterface);
@@ -1046,10 +1037,8 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         if (internalNetworkInterface == null) {
             cmd.appendArg("0");
         } else {
-            // Don't touch link-local routes, as link-local addresses aren't routable,
-            // kernel creates link-local routes on all interfaces automatically
-            List<InterfaceAddress> interfaceAddresses = excludeLinkLocal(
-                    internalNetworkInterface.getInterfaceAddresses());
+            Collection<InterfaceAddress> interfaceAddresses = internalNetworkInterface
+                    .getInterfaceAddresses();
             cmd.appendArg(interfaceAddresses.size());
             for (InterfaceAddress ia : interfaceAddresses) {
                 InetAddress addr = NetworkUtils.getNetworkPart(
@@ -1135,8 +1124,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
                 mConnector.execute("softap", "set", wlanIface, softapIface);
             } else {
                 mConnector.execute("softap", "set", wlanIface, softapIface, wifiConfig.SSID,
-                                   "broadcast", "6", getSecurityType(wifiConfig),
-                                   new SensitiveArg(wifiConfig.preSharedKey));
+                        getSecurityType(wifiConfig), new SensitiveArg(wifiConfig.preSharedKey));
             }
             mConnector.execute("softap", "startap");
         } catch (NativeDaemonConnectorException e) {
@@ -1186,8 +1174,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
                 mConnector.execute("softap", "set", wlanIface, softapIface);
             } else {
                 mConnector.execute("softap", "set", wlanIface, softapIface, wifiConfig.SSID,
-                                   "broadcast", "6", getSecurityType(wifiConfig),
-                                   new SensitiveArg(wifiConfig.preSharedKey));
+                        getSecurityType(wifiConfig), new SensitiveArg(wifiConfig.preSharedKey));
             }
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
@@ -1626,7 +1613,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     public void clearDnsInterfaceForUidRange(String iface, int uid_start, int uid_end) {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
-            mConnector.execute("resolver", "clearifaceforuidrange", iface, uid_start, uid_end);
+            mConnector.execute("resolver", "clearifaceforuidrange", uid_start, uid_end);
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
         }
@@ -1945,9 +1932,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         cmd.appendArg(iface);
         cmd.appendArg(metric);
 
-        // If route is not default then
-        // implicitly treat it as a host route
-        if (!route.isDefaultRoute()) {
+        if (route.isHostRoute()) {
             cmd.appendArg(route.getDestination().getAddress().getHostAddress());
         }
 
