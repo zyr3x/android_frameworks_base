@@ -810,6 +810,48 @@ final class ApplicationPackageManager extends PackageManager {
         throw new NameNotFoundException("Package " + appPackageName + " doesn't exist");
     }
 
+    /** @hide */
+    @Override public Resources getThemedResourcesForApplication(
+            ApplicationInfo app, String themePkgName) throws NameNotFoundException {
+        if (app.packageName.equals("system")) {
+            return mContext.mMainThread.getSystemContext().getResources();
+        }
+
+        Resources r = mContext.mMainThread.getTopLevelThemedResources(
+                app.uid == Process.myUid() ? app.sourceDir : app.publicSourceDir,
+                Display.DEFAULT_DISPLAY, mContext.mPackageInfo, app.packageName, themePkgName);
+        if (r != null) {
+            return r;
+        }
+        throw new NameNotFoundException("Unable to open " + app.publicSourceDir);
+    }
+
+    /** @hide */
+    @Override public Resources getThemedResourcesForApplication(
+            String appPackageName, String themePkgName) throws NameNotFoundException {
+        return getThemedResourcesForApplication(
+                getApplicationInfo(appPackageName, 0), themePkgName);
+    }
+
+    /** @hide */
+    @Override
+    public Resources getThemedResourcesForApplicationAsUser(String appPackageName,
+            String themePackageName, int userId) throws NameNotFoundException {
+        if (userId < 0) {
+            throw new IllegalArgumentException(
+                    "Call does not support special user #" + userId);
+        }
+        try {
+            ApplicationInfo ai = mPM.getApplicationInfo(appPackageName, 0, userId);
+            if (ai != null) {
+                return getThemedResourcesForApplication(ai, themePackageName);
+            }
+        } catch (RemoteException e) {
+            throw new RuntimeException("Package manager has died", e);
+        }
+        throw new NameNotFoundException("Package " + appPackageName + " doesn't exist");
+    }
+
     int mCachedSafeMode = -1;
     @Override public boolean isSafeMode() {
         try {

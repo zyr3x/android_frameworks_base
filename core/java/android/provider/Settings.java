@@ -1035,7 +1035,7 @@ public final class Settings {
             MOVED_TO_SECURE.add(Secure.LOCK_PATTERN_ENABLED);
             MOVED_TO_SECURE.add(Secure.LOCK_PATTERN_VISIBLE);
             MOVED_TO_SECURE.add(Secure.LOCK_PATTERN_TACTILE_FEEDBACK_ENABLED);
-            MOVED_TO_SECURE.add(Secure.LOCK_NUMPAD_RANDOM);
+            MOVED_TO_SECURE.add(Secure.LOCK_PATTERN_SIZE);
             MOVED_TO_SECURE.add(Secure.LOGGING_ID);
             MOVED_TO_SECURE.add(Secure.PARENTAL_CONTROL_ENABLED);
             MOVED_TO_SECURE.add(Secure.PARENTAL_CONTROL_LAST_UPDATE);
@@ -2779,6 +2779,8 @@ public final class Settings {
             MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_PATTERN_ENABLED);
             MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_PATTERN_VISIBLE);
             MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_PATTERN_TACTILE_FEEDBACK_ENABLED);
+            MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_GESTURE_ENABLED);
+            MOVED_TO_LOCK_SETTINGS.add(Secure.LOCK_GESTURE_VISIBLE);
 
             MOVED_TO_GLOBAL = new HashSet<String>();
             MOVED_TO_GLOBAL.add(Settings.Global.ADB_ENABLED);
@@ -3435,6 +3437,12 @@ public final class Settings {
         public static final String LOCK_PATTERN_VISIBLE = "lock_pattern_visible_pattern";
 
         /**
+         * Determines the width and height of the LockPatternView widget
+         * @hide
+         */
+        public static final String LOCK_PATTERN_SIZE = "lock_pattern_size";
+
+        /**
          * Whether the NumKeyPad will change the orders of numbers
          * in a PIN locked lockscreen
          * 0 = off | 1 = always | 2 = only on request
@@ -3454,6 +3462,18 @@ public final class Settings {
         @Deprecated
         public static final String
                 LOCK_PATTERN_TACTILE_FEEDBACK_ENABLED = "lock_pattern_tactile_feedback_enabled";
+
+        /**
+         * Whether autolock is enabled (0 = false, 1 = true)
+         * @hide
+         */
+        public static final String LOCK_GESTURE_ENABLED = "lock_gesture_autolock";
+
+        /**
+         * Whether lock gesture is visible as user enters (0 = false, 1 = true)
+         * @hide
+         */
+        public static final String LOCK_GESTURE_VISIBLE = "lock_gesture_visible_pattern";
 
         /**
          * This preference allows the device to be locked given time after screen goes off,
@@ -6769,7 +6789,7 @@ public final class Settings {
         };
 
         /**
-         * Whether to enable quiet hours.
+         * Whether to enable quiet hours. (boolean)
          * @hide
          */
         public static final String QUIET_HOURS_ENABLED = "quiet_hours_enabled";
@@ -7216,13 +7236,6 @@ public final class Settings {
         public static final String DEFAULT_THEME_COMPONENTS = "default_theme_components";
 
         /**
-         * Whether the default theme was applied on the first boot.
-         * @hide
-         */
-        public static final String DEFAULT_THEME_APPLIED_ON_FIRST_BOOT =
-                "default_theme_applied_on_first_boot";
-
-        /**
          * Location mode toggle
          * 1 - LOCATION_MODE_OFF / LOCATION_MODE_SENSORS_ONLY / LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_HIGH_ACCURACY
          * 2 - LOCATION_MODE_HIGH_ACCURACY / LOCATION_MODE_BATTERY_SAVING / LOCATION_MODE_SENSORS_ONLY
@@ -7236,6 +7249,14 @@ public final class Settings {
          * @hide
          */
         public static final String LOCATION_MODES_TOGGLE = "location_modes_toggle";
+
+        /**
+         * Network modes toggle
+         * States of network devided by |
+         * Like 9|0|1
+         * @hide
+         */
+        public static final String NETWORK_MODES_TOGGLE = "network_modes_toggle";
 
         /**
          * Whether to enable the navbar for hw key devices
@@ -7262,6 +7283,13 @@ public final class Settings {
          * @hide
          */
         public static final String NAVIGATION_BAR_WIDTH = "navigation_bar_width";
+
+        /**
+         * NFC polling mode configuration key
+         *
+         * @hide
+         */
+        public static final String NFC_POLLING_MODE = "nfc_polling_mode";
 
         /**
          * Whether volume up/down can be long pressed to skip tracks
@@ -7499,6 +7527,14 @@ public final class Settings {
         public static final String BATTERY_CHARGING_LED_ENABLED = "battery_charging_led_enabled";
 
         /**
+         * Boolean value. Whether to show the 4G icon when on LTE.
+         * True = show 4G
+         * False = show LTE
+         * @hide
+         */
+        public static final String STATUSBAR_SIGNAL_SHOW_4G_FOR_LTE = "statusbar_signal_show_4g_for_lte";
+
+        /**
          * Enable / disable navring
          * @hide
          */
@@ -7700,6 +7736,122 @@ public final class Settings {
          * @hide
          */
         public static final String LISTVIEW_INTERPOLATOR = "listview_interpolator";
+
+        /**
+         * Whether to use the menu key to unlock the screen
+         * @hide
+         */
+        public static final String LOCKSCREEN_MENU_UNLOCK = "lockscreen_menu_unlock";
+
+        /**
+         * Auto Immersive Mode array
+         * @hide
+         */
+        public static final String KEY_AUTO_IMMERSIVE_ARRAY = "auto_immersive_array";
+
+        /**
+         * Whether electronic beam animation is enabled or not
+         * @hide
+         */
+        public static final String SYSTEM_POWER_ENABLE_CRT_OFF = "system_power_enable_crt_off";
+
+        /**
+         * Electronic beam animation mode
+         * 0 = always horizontal, 1 = always vertical, 2 = dependent on orientation
+         * @hide
+         */
+        public static final String SYSTEM_POWER_CRT_MODE = "system_power_crt_mode";
+
+        /**
+         * Control whether the accelerometer will be used to change lockscreen
+         * orientation.  If 0, it will not be used; if 1, it will be used by default.
+         * @hide
+         */
+        public static final String LOCKSCREEN_ROTATION = "lockscreen_rotation";
+
+        /**
+         * Goodbye fullscreen keyboard
+         *
+         * @hide
+         */
+        public static final String FULLSCREEN_KEYBOARD = "fullscreen_keyboard";
+
+        /**
+         * Heads Up Notifications
+         *
+         * @hide
+         */
+        public static final String HEADS_UP_NOTIFICATION = "heads_up_enabled";
+
+        /**
+         * Which applications to disable heads up notifications in
+         *
+         * @hide
+         */
+        public static final String HEADS_UP_CUSTOM_VALUES = "heads_up_custom_values";
+
+        /**
+         * Which applications to disable heads up notifications for
+         *
+         * @hide
+         */
+        public static final String HEADS_UP_BLACKLIST_VALUES = "heads_up_blacklist_values";
+
+        /**
+         * Show arrow buttons as left and right dpad keys
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_DPAD_KEYS = "navigation_bar_dpad_keys";
+
+        /**
+         * Whether the blacklisting feature for phone calls is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_ENABLED = "phone_blacklist_enabled";
+
+        /**
+         * Whether a notification should be shown when a call/message is blocked
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_NOTIFY_ENABLED = "phone_blacklist_notify_enabled";
+
+        /**
+         * Whether the blacklisting feature for phone calls from private numbers is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_PRIVATE_NUMBER_MODE = "phone_blacklist_private_number_enabled";
+
+        /**
+         * Whether the blacklisting feature for phone calls from unknown numbers is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE = "phone_blacklist_unknown_number_enabled";
+
+        /**
+         * Constants to be used for {@link PHONE_BLACKLIST_PRIVATE_NUMBER_MODE} and
+         * {@link PHONE_BLACKLIST_UNKNOWN_NUMBER_MODE}.
+         * @hide
+         */
+        public static final int BLACKLIST_DO_NOT_BLOCK = 0;
+
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_BLOCK = 1;
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_PHONE_SHIFT = 0;
+        /**
+         * @hide
+         */
+        public static final int BLACKLIST_MESSAGE_SHIFT = 4;
+
+        /**
+         * Whether the regex blacklisting feature for phone calls is enabled
+         * @hide
+         */
+        public static final String PHONE_BLACKLIST_REGEX_ENABLED = "phone_blacklist_regex_enabled";
 
     }
 

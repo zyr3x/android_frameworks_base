@@ -22,12 +22,15 @@ import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
+import android.content.res.ThemeConfig;
 import android.database.ContentObserver;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -55,6 +58,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.view.WindowManager;
 import android.view.WindowManagerGlobal;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -78,6 +82,7 @@ import com.android.systemui.statusbar.phone.PhoneStatusBar;
 import com.android.systemui.statusbar.policy.NotificationRowLayout;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 public abstract class BaseStatusBar extends SystemUI implements
@@ -98,8 +103,7 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     protected static final boolean ENABLE_HEADS_UP = true;
     // scores above this threshold should be displayed in heads up mode.
-    protected static final int INTERRUPTION_THRESHOLD = 11;
-    protected static final String SETTING_HEADS_UP = "heads_up_enabled";
+    protected static final int INTERRUPTION_THRESHOLD = 1;
 
     // Should match the value in PhoneWindowManager
     public static final String SYSTEM_DIALOG_REASON_RECENT_APPS = "recentapps";
@@ -159,6 +163,9 @@ public abstract class BaseStatusBar extends SystemUI implements
     private boolean mDeviceProvisioned = false;
 
     private RecentsComponent mRecents;
+
+    private ArrayList<String> mDndList;
+    private ArrayList<String> mBlacklist;
 
     public IStatusBarService getStatusBarService() {
         return mBarService;
@@ -221,6 +228,40 @@ public abstract class BaseStatusBar extends SystemUI implements
         }
     };
 
+    private class SettingsObserver extends ContentObserver {
+        public SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        public void observe() {
+            ContentResolver resolver = mContext.getContentResolver();
+            resolver.registerContentObserver(
+                    Settings.AOKP.getUriFor(Settings.AOKP.HEADS_UP_CUSTOM_VALUES),
+                    false, this);
+            resolver.registerContentObserver(
+                    Settings.AOKP.getUriFor(Settings.AOKP.HEADS_UP_BLACKLIST_VALUES),
+                    false, this);
+            update();
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            update();
+        }
+
+        private void update() {
+            ContentResolver resolver = mContext.getContentResolver();
+            final String dndString = Settings.AOKP.getString(resolver,
+                    Settings.AOKP.HEADS_UP_CUSTOM_VALUES);
+            final String blackString = Settings.AOKP.getString(resolver,
+                    Settings.AOKP.HEADS_UP_BLACKLIST_VALUES);
+            splitAndAddToArrayList(mDndList, dndString, "\\|");
+            splitAndAddToArrayList(mBlacklist, blackString, "\\|");
+        }
+    };
+
+    private SettingsObserver mSettingsObserver = new SettingsObserver(mHandler);
+
     private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -242,10 +283,15 @@ public abstract class BaseStatusBar extends SystemUI implements
                 ServiceManager.checkService(DreamService.DREAM_SERVICE));
         mPowerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
 
+        mDndList = new ArrayList<String>();
+        mBlacklist = new ArrayList<String>();
+
         mProvisioningObserver.onChange(false); // set up
         mContext.getContentResolver().registerContentObserver(
                 Settings.Global.getUriFor(Settings.Global.DEVICE_PROVISIONED), true,
                 mProvisioningObserver);
+
+        mSettingsObserver.observe();
 
         mBarService = IStatusBarService.Stub.asInterface(
                 ServiceManager.getService(Context.STATUS_BAR_SERVICE));
@@ -585,6 +631,7 @@ public abstract class BaseStatusBar extends SystemUI implements
     }
 
     public abstract void resetHeadsUpDecayTimer();
+    public abstract void hideHeadsUp();
 
     protected class H extends Handler {
         public void handleMessage(Message m) {
@@ -696,10 +743,15 @@ public abstract class BaseStatusBar extends SystemUI implements
 
         View contentViewLocal = null;
         View bigContentViewLocal = null;
+        final ThemeConfig themeConfig = mContext.getResources().getConfiguration().themeConfig;
+        String themePackageName = themeConfig != null ?
+                themeConfig.getOverlayPkgNameForApp(mContext.getPackageName()) : null;
         try {
-            contentViewLocal = contentView.apply(mContext, adaptive, mOnClickHandler);
+            contentViewLocal = contentView.apply(mContext, adaptive, mOnClickHandler,
+                    themePackageName);
             if (bigContentView != null) {
-                bigContentViewLocal = bigContentView.apply(mContext, adaptive, mOnClickHandler);
+                bigContentViewLocal = bigContentView.apply(mContext, adaptive, mOnClickHandler,
+                        themePackageName);
             }
         }
         catch (RuntimeException e) {
@@ -1120,6 +1172,12 @@ public abstract class BaseStatusBar extends SystemUI implements
 
     protected boolean shouldInterrupt(StatusBarNotification sbn) {
         Notification notification = sbn.getNotification();
+
+        // check if notification from the package is blacklisted first
+        if (isPackageBlacklisted(sbn.getPackageName())) {
+            return false;
+        }
+
         // some predicates to make the boolean logic legible
         boolean isNoisy = (notification.defaults & Notification.DEFAULT_SOUND) != 0
                 || (notification.defaults & Notification.DEFAULT_VIBRATE) != 0
@@ -1129,20 +1187,70 @@ public abstract class BaseStatusBar extends SystemUI implements
         boolean isFullscreen = notification.fullScreenIntent != null;
         boolean isAllowed = notification.extras.getInt(Notification.EXTRA_AS_HEADS_UP,
                 Notification.HEADS_UP_ALLOWED) != Notification.HEADS_UP_NEVER;
+        boolean isOngoing = sbn.isOngoing();
 
         final KeyguardTouchDelegate keyguard = KeyguardTouchDelegate.getInstance(mContext);
+        boolean keyguardNotVisible = !keyguard.isShowingAndNotHidden()
+                && !keyguard.isInputRestricted();
+
+        final InputMethodManager inputMethodManager = (InputMethodManager)
+                mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+
+        boolean isIMEShowing = inputMethodManager.isImeShowing();
+
         boolean interrupt = (isFullscreen || (isHighPriority && isNoisy))
                 && isAllowed
-                && mPowerManager.isScreenOn()
-                && !keyguard.isShowingAndNotHidden()
-                && !keyguard.isInputRestricted();
+                && keyguardNotVisible
+                && !isOngoing
+                && !isIMEShowing
+                && mPowerManager.isScreenOn();
+
         try {
             interrupt = interrupt && !mDreamManager.isDreaming();
         } catch (RemoteException e) {
             Log.d(TAG, "failed to query dream manager", e);
         }
+
+        // its below our threshold priority, we might want to always display
+        // notifications from certain apps
+        if (!isHighPriority && keyguardNotVisible && !isOngoing && !isIMEShowing) {
+            // However, we don't want to interrupt if we're in an application that is
+            // in Do Not Disturb
+            if (!isPackageInDnd(getTopLevelPackage())) {
+                return true;
+            }
+        }
+
         if (DEBUG) Log.d(TAG, "interrupt: " + interrupt);
         return interrupt;
+    }
+
+    private String getTopLevelPackage() {
+        final ActivityManager am = (ActivityManager)
+                mContext.getSystemService(Context.ACTIVITY_SERVICE);
+        List< ActivityManager.RunningTaskInfo > taskInfo = am.getRunningTasks(1);
+        ComponentName componentInfo = taskInfo.get(0).topActivity;
+        return componentInfo.getPackageName();
+    }
+
+    private boolean isPackageInDnd(String packageName) {
+        return mDndList.contains(packageName);
+    }
+
+    private boolean isPackageBlacklisted(String packageName) {
+        return mBlacklist.contains(packageName);
+    }
+
+    private void splitAndAddToArrayList(ArrayList<String> arrayList,
+                                        String baseString, String separator) {
+        // clear first
+        arrayList.clear();
+        if (baseString != null) {
+            final String[] array = TextUtils.split(baseString, separator);
+            for (String item : array) {
+                arrayList.add(item.trim());
+            }
+        }
     }
 
     // Q: What kinds of notifications should show during setup?

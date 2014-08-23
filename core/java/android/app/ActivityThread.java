@@ -39,7 +39,6 @@ import android.content.pm.ServiceInfo;
 import android.content.res.AssetManager;
 import android.content.res.CompatibilityInfo;
 import android.content.res.Configuration;
-import android.content.res.CustomTheme;
 import android.content.res.Resources;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteDebug;
@@ -162,7 +161,7 @@ public final class ActivityThread {
     private static final int LOG_ON_PAUSE_CALLED = 30021;
     private static final int LOG_ON_RESUME_CALLED = 30022;
 
-    private ContextImpl mSystemContext;
+    static ContextImpl mSystemContext = null;
 
     static IPackageManager sPackageManager;
 
@@ -1545,6 +1544,15 @@ public final class ActivityThread {
                 overrideConfiguration, pkgInfo.getCompatibilityInfo(), null, context);
     }
 
+    /**
+     * Creates the top level resources for the given package.
+     */
+    Resources getTopLevelThemedResources(String resDir, int displayId, LoadedApk pkgInfo,
+                                         String pkgName, String themePkgName) {
+        return mResourcesManager.getTopLevelThemedResources(resDir, displayId, pkgName,
+                themePkgName, pkgInfo.getCompatibilityInfo(), null);
+    }
+
     final Handler getHandler() {
         return mH;
     }
@@ -1647,8 +1655,7 @@ public final class ActivityThread {
                 ref = mResourcePackages.get(aInfo.packageName);
             }
             LoadedApk packageInfo = ref != null ? ref.get() : null;
-            if (packageInfo == null || (packageInfo.mResources != null
-                    && !packageInfo.mResources.getAssets().isUpToDate())) {
+            if (packageInfo == null) {
                 if (localLOGV) Slog.v(TAG, (includeCode ? "Loading code package "
                         : "Loading resource-only package ") + aInfo.packageName
                         + " (in " + (mBoundApplication != null
@@ -1665,6 +1672,10 @@ public final class ActivityThread {
                     mResourcePackages.put(aInfo.packageName,
                             new WeakReference<LoadedApk>(packageInfo));
                 }
+            }
+            if (packageInfo.mResources != null
+                    && !packageInfo.mResources.getAssets().isUpToDate()) {
+                packageInfo.mResources = null;
             }
             return packageInfo;
         }

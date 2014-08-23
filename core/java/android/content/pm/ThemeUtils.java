@@ -29,6 +29,8 @@ import android.os.FileUtils;
 import android.os.SystemProperties;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.provider.ThemesContract;
+import android.provider.ThemesContract.ThemesColumns;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -44,12 +46,16 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import static android.content.res.CustomTheme.HOLO_DEFAULT;
+import static android.content.res.ThemeConfig.HOLO_DEFAULT;
 
 /**
  * @hide
@@ -67,6 +73,7 @@ public class ThemeUtils {
     public static final String IDMAP_SUFFIX = "@idmap";
     public static final String COMMON_RES_SUFFIX = ".common";
     public static final String COMMON_RES_TARGET = "common";
+    public static final String ICON_HASH_FILENAME = "hash";
 
     // path to external theme resources, i.e. bootanimation.zip
     public static final String SYSTEM_THEME_PATH = "/data/system/theme";
@@ -77,6 +84,8 @@ public class ThemeUtils {
             + File.separator + "notifications";
     public static final String SYSTEM_THEME_ALARM_PATH = SYSTEM_THEME_PATH
             + File.separator + "alarms";
+    public static final String SYSTEM_THEME_ICON_CACHE_DIR = SYSTEM_THEME_PATH
+            + File.separator + "icons";
     // internal path to bootanimation.zip inside theme apk
     public static final String THEME_BOOTANIMATION_PATH = "assets/bootanimation/bootanimation.zip";
 
@@ -91,6 +100,8 @@ public class ThemeUtils {
     private static final String MEDIA_CONTENT_URI = "content://media/internal/audio/media";
 
     public static final String ACTION_THEME_CHANGED = "org.cyanogenmod.intent.action.THEME_CHANGED";
+
+    public static final String CATEGORY_THEME_COMPONENT_PREFIX = "org.cyanogenmod.intent.category.";
 
     // Actions in manifests which identify legacy icon packs
     public static final String[] sSupportedActions = new String[] {
@@ -147,6 +158,10 @@ public class ThemeUtils {
 
     public static String getIconPackDir(String pkgName) {
       return IDMAP_PREFIX + pkgName;
+    }
+
+    public static String getIconHashFile(String pkgName) {
+        return getIconPackDir(pkgName) + File.separator  +  ICON_HASH_FILENAME;
     }
 
     public static String getIconPackApkPath(String pkgName) {
@@ -244,6 +259,17 @@ public class ThemeUtils {
      */
     public static void createAlarmDirIfNotExists() {
         createDirIfNotExists(SYSTEM_THEME_ALARM_PATH);
+    }
+
+    /**
+     * Create SYSTEM_THEME_ICON_CACHE_DIR directory if it does not exist
+     */
+    public static void createIconCacheDirIfNotExists() {
+        createDirIfNotExists(SYSTEM_THEME_ICON_CACHE_DIR);
+    }
+
+    public static void clearIconCache() {
+        deleteFilesInDir(SYSTEM_THEME_ICON_CACHE_DIR);
     }
 
     //Note: will not delete populated subdirs
@@ -493,25 +519,32 @@ public class ThemeUtils {
     }
 
     public static String getLockscreenWallpaperPath(AssetManager assetManager) throws IOException {
-        final String WALLPAPER_JPG = "wallpaper.jpg";
-        final String WALLPAPER_PNG = "wallpaper.png";
-
         String[] assets = assetManager.list("lockscreen");
-        if (assets == null || assets.length == 0) return null;
-        for (String asset : assets) {
-            if (WALLPAPER_JPG.equals(asset)) {
-                return "lockscreen/" + WALLPAPER_JPG;
-            } else if (WALLPAPER_PNG.equals(asset)) {
-                return "lockscreen/" + WALLPAPER_PNG;
-            }
-        }
-        return null;
+        String asset = getFirstNonEmptyAsset(assets);
+        if (asset == null) return null;
+        return "lockscreen/" + asset;
     }
 
     public static String getWallpaperPath(AssetManager assetManager) throws IOException {
         String[] assets = assetManager.list("wallpapers");
-        if (assets == null || assets.length == 0) return null;
-        return "wallpapers/" + assets[0];
+        String asset = getFirstNonEmptyAsset(assets);
+        if (asset == null) return null;
+        return "wallpapers/" + asset;
+    }
+
+    // Returns the first non-empty asset name. Empty assets can occur if the APK is built
+    // with folders included as zip entries in the APK. Searching for files inside "folderName" via
+    // assetManager.list("folderName") can cause these entries to be included as empty strings.
+    private static String getFirstNonEmptyAsset(String[] assets) {
+        if (assets == null) return null;
+        String filename = null;
+        for(String asset : assets) {
+            if (!asset.isEmpty()) {
+                filename = asset;
+                break;
+            }
+        }
+        return filename;
     }
 
     public static String getDefaultThemePackageName(Context context) {
@@ -543,6 +576,96 @@ public class ThemeUtils {
         @Override
         public String getPackageName() {
             return mPackageName;
+        }
+    }
+
+    // Returns a mutable list of all theme components
+    public static List<String> getAllComponents() {
+        List<String> components = new ArrayList<String>(9);
+        components.add(ThemesColumns.MODIFIES_FONTS);
+        components.add(ThemesColumns.MODIFIES_LAUNCHER);
+        components.add(ThemesColumns.MODIFIES_ALARMS);
+        components.add(ThemesColumns.MODIFIES_BOOT_ANIM);
+        components.add(ThemesColumns.MODIFIES_ICONS);
+        components.add(ThemesColumns.MODIFIES_LOCKSCREEN);
+        components.add(ThemesColumns.MODIFIES_NOTIFICATIONS);
+        components.add(ThemesColumns.MODIFIES_OVERLAYS);
+        components.add(ThemesColumns.MODIFIES_RINGTONES);
+        components.add(ThemesColumns.MODIFIES_STATUS_BAR);
+        components.add(ThemesColumns.MODIFIES_NAVIGATION_BAR);
+        return components;
+    }
+
+    /**
+     *  Returns a mutable list of all the theme components supported by a given package
+     *  NOTE: This queries the themes content provider. If there isn't a provider installed
+     *  or if it is too early in the boot process this method will not work.
+     */
+    public static List<String> getSupportedComponents(Context context, String pkgName) {
+        List<String> supportedComponents = new ArrayList<String>();
+
+        String selection = ThemesContract.ThemesColumns.PKG_NAME + "= ?";
+        String[] selectionArgs = new String[]{ pkgName };
+        Cursor c = context.getContentResolver().query(ThemesContract.ThemesColumns.CONTENT_URI,
+                null, selection, selectionArgs, null);
+
+        if (c != null && c.moveToFirst()) {
+            List<String> allComponents = getAllComponents();
+            for(String component : allComponents) {
+                int index = c.getColumnIndex(component);
+                if (c.getInt(index) == 1) {
+                    supportedComponents.add(component);
+                }
+            }
+        }
+        return supportedComponents;
+    }
+
+    /**
+     * Get the components from the default theme.  If the default theme is not HOLO then any
+     * components that are not in the default theme will come from HOLO to create a complete
+     * component map.
+     * @param context
+     * @return
+     */
+    public static Map<String, String> getDefaultComponents(Context context) {
+        String defaultThemePkg = getDefaultThemePackageName(context);
+        List<String> defaultComponents = null;
+        List<String> holoComponents = getSupportedComponents(context, HOLO_DEFAULT);
+        if (!HOLO_DEFAULT.equals(defaultThemePkg)) {
+            defaultComponents = getSupportedComponents(context, defaultThemePkg);
+        }
+
+        Map<String, String> componentMap = new HashMap<String, String>(holoComponents.size());
+        if (defaultComponents != null) {
+            for (String component : defaultComponents) {
+                componentMap.put(component, defaultThemePkg);
+            }
+        }
+        for (String component : holoComponents) {
+            if (!componentMap.containsKey(component)) {
+                componentMap.put(component, HOLO_DEFAULT);
+            }
+        }
+
+        return componentMap;
+    }
+
+    /**
+     * Takes an existing component map and adds any missing components from the default
+     * map of components.
+     * @param context
+     * @param componentMap An existing component map
+     */
+    public static void completeComponentMap(Context context,
+            Map<String, String> componentMap) {
+        if (componentMap == null) return;
+
+        Map<String, String> defaultComponents = getDefaultComponents(context);
+        for (String component : defaultComponents.keySet()) {
+            if (!componentMap.containsKey(component)) {
+                componentMap.put(component, defaultComponents.get(component));
+            }
         }
     }
 }

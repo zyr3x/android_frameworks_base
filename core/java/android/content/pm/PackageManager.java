@@ -2611,6 +2611,18 @@ public abstract class PackageManager {
     public abstract Resources getResourcesForApplicationAsUser(String appPackageName, int userId)
             throws NameNotFoundException;
 
+    /** @hide */
+    public abstract Resources getThemedResourcesForApplication(ApplicationInfo app,
+            String themePkgName) throws NameNotFoundException;
+
+    /** @hide */
+    public abstract Resources getThemedResourcesForApplication(String appPackageName,
+            String themePkgName) throws NameNotFoundException;
+
+    /** @hide */
+    public abstract Resources getThemedResourcesForApplicationAsUser(String appPackageName,
+            String themePkgName, int userId) throws NameNotFoundException;
+
     /**
      * Retrieve overall information about an application package defined
      * in a package archive file

@@ -1697,7 +1697,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 try {
                     LockPatternUtils lpu = new LockPatternUtils(mContext);
                     List<LockPatternView.Cell> cellPattern =
-                            LockPatternUtils.stringToPattern(lockPattern);
+                            lpu.stringToPattern(lockPattern);
                     lpu.saveLockPattern(cellPattern);
                 } catch (IllegalArgumentException e) {
                     // Don't want corrupted lock pattern to hang the reboot process
@@ -1975,6 +1975,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    private void loadHeadsUpSetting(SQLiteStatement stmt) {
+        String dndValues = mContext.getResources()
+                .getString(R.string.def_heads_up_notification_dnd_values);
+        String blackListValues = mContext.getResources()
+                .getString(R.string.def_heads_up_notification_blacklist_values);
+        if (!TextUtils.isEmpty(dndValues)) {
+            loadSetting(stmt, Settings.AOKP.HEADS_UP_NOTIFICATION, "0");
+            loadSetting(stmt, Settings.AOKP.HEADS_UP_CUSTOM_VALUES, dndValues);
+            loadSetting(stmt, Settings.AOKP.HEADS_UP_BLACKLIST_VALUES, blackListValues);
+        }
+    }
+
     private void loadSettings(SQLiteDatabase db) {
         loadSystemSettings(db);
         loadSecureSettings(db);
@@ -2025,6 +2037,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             loadIntegerSetting(stmt, Settings.System.POINTER_SPEED,
                     R.integer.def_pointer_speed);
+
+            loadHeadsUpSetting(stmt);
+
         } finally {
             if (stmt != null) stmt.close();
         }
@@ -2062,6 +2077,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             loadIntegerSetting(stmt, Settings.AOKP.UI_FORCE_OVERFLOW_BUTTON,
                     R.integer.def_force_overflow_button);
+            loadIntegerSetting(stmt, Settings.AOKP.SCREENSHOT_MODE_OPTIONS,
+                    R.integer.def_screenshot_mode_options);
+            loadIntegerSetting(stmt, Settings.AOKP.IMMERSIVE_MODE_OPTIONS,
+                    R.integer.def_immersive_mode_options);
         } finally {
             if (stmt != null) stmt.close();
         }

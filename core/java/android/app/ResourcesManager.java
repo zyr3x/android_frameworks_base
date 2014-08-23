@@ -29,7 +29,7 @@ import android.content.pm.ThemeUtils;
 import android.content.res.AssetManager;
 import android.content.res.CompatibilityInfo;
 import android.content.res.Configuration;
-import android.content.res.CustomTheme;
+import android.content.res.ThemeConfig;
 import android.content.res.Resources;
 import android.content.res.ResourcesKey;
 import android.hardware.display.DisplayManagerGlobal;
@@ -216,26 +216,27 @@ public class ResourcesManager {
             config = getConfiguration();
         }
 
+        boolean iconsAttached = false;
         /* Attach theme information to the resulting AssetManager when appropriate. */
         if (compatInfo.isThemeable && config != null && !context.getPackageManager().isSafeMode()) {
-            if (config.customTheme == null) {
+            if (config.themeConfig == null) {
                 try {
-                    config.customTheme = CustomTheme.getBootTheme(context.getContentResolver());
+                    config.themeConfig = ThemeConfig.getBootTheme(context.getContentResolver());
                 } catch (Exception e) {
-                    Slog.d(TAG, "CustomTheme.getBootTheme failed, falling back to system theme", e);
-                    config.customTheme = CustomTheme.getSystemTheme();
+                    Slog.d(TAG, "ThemeConfig.getBootTheme failed, falling back to system theme", e);
+                    config.themeConfig = ThemeConfig.getSystemTheme();
                 }
             }
 
-            if (config.customTheme != null) {
-                attachThemeAssets(assets, config.customTheme);
-                attachCommonAssets(assets, config.customTheme);
-                attachIconAssets(assets, config.customTheme);
+            if (config.themeConfig != null) {
+                attachThemeAssets(assets, config.themeConfig);
+                attachCommonAssets(assets, config.themeConfig);
+                iconsAttached = attachIconAssets(assets, config.themeConfig);
             }
         }
 
         r = new Resources(assets, dm, config, compatInfo, token);
-        setActivityIcons(r);
+        if (iconsAttached) setActivityIcons(r);
 
         if (false) {
             Slog.i(TAG, "Created app resources " + resDir + " " + r + ": "
@@ -260,6 +261,56 @@ public class ResourcesManager {
     }
 
     /**
+     * Creates the top level Resources for applications with the given compatibility info.
+     *
+     * @param resDir the resource directory.
+     * @param compatInfo the compability info. Must not be null.
+     * @param token the application token for determining stack bounds.
+     *
+     * @hide
+     */
+    public Resources getTopLevelThemedResources(String resDir, int displayId,
+                                                String packageName,
+                                                String themePackageName,
+                                                CompatibilityInfo compatInfo, IBinder token) {
+        Resources r;
+
+        AssetManager assets = new AssetManager();
+        assets.setAppName(packageName);
+        assets.setThemeSupport(true);
+        if (assets.addAssetPath(resDir) == 0) {
+            return null;
+        }
+
+        //Slog.i(TAG, "Resource: key=" + key + ", display metrics=" + metrics);
+        DisplayMetrics dm = getDisplayMetricsLocked(displayId);
+        Configuration config;
+        boolean isDefaultDisplay = (displayId == Display.DEFAULT_DISPLAY);
+        if (!isDefaultDisplay) {
+            config = new Configuration(getConfiguration());
+            applyNonDefaultDisplayMetricsToConfigurationLocked(dm, config);
+        } else {
+            config = getConfiguration();
+        }
+
+        /* Attach theme information to the resulting AssetManager when appropriate. */
+        ThemeConfig.Builder builder = new ThemeConfig.Builder();
+        builder.defaultOverlay(themePackageName);
+        builder.defaultIcon(themePackageName);
+        builder.defaultFont(themePackageName);
+
+        ThemeConfig themeConfig = builder.build();
+        attachThemeAssets(assets, themeConfig);
+        attachCommonAssets(assets, themeConfig);
+        attachIconAssets(assets, themeConfig);
+
+        r = new Resources(assets, dm, config, compatInfo, token);
+        setActivityIcons(r);
+
+        return r;
+    }
+
+    /**
      * Creates a map between an activity & app's icon ids to its component info. This map
      * is then stored in the resource object.
      * When resource.getDrawable(id) is called it will check this mapping and replace
@@ -275,29 +326,47 @@ public class ResourcesManager {
         ApplicationInfo appInfo = null;
 
         try {
-            pkgInfo = getPackageManager().getPackageInfo(pkgName, PackageManager.GET_ACTIVITIES, UserHandle.myUserId());
+            pkgInfo = getPackageManager().getPackageInfo(pkgName, PackageManager.GET_ACTIVITIES,
+                    UserHandle.getCallingUserId());
         } catch (RemoteException e1) {
             Log.e(TAG, "Unable to get pkg " + pkgName, e1);
+            return;
+        }
+
+        final ThemeConfig themeConfig = r.getConfiguration().themeConfig;
+        if (pkgName != null && themeConfig != null &&
+                pkgName.equals(themeConfig.getIconPackPkgName())) {
             return;
         }
 
         //Map application icon
         if (pkgInfo != null && pkgInfo.applicationInfo != null) {
             appInfo = pkgInfo.applicationInfo;
-            if (appInfo.themedIcon != 0) iconResources.put(appInfo.icon, appInfo);
+            if (appInfo.themedIcon != 0 || iconResources.get(appInfo.icon) == null) {
+                iconResources.put(appInfo.icon, appInfo);
+            }
         }
 
         //Map activity icons.
         if (pkgInfo != null && pkgInfo.activities != null) {
             for (ActivityInfo ai : pkgInfo.activities) {
-                if (ai.themedIcon != 0 && ai.icon != 0) {
+                if (ai.icon != 0 && (ai.themedIcon != 0 || iconResources.get(ai.icon) == null)) {
                     iconResources.put(ai.icon, ai);
-                } else if (ai.themedIcon != 0 && appInfo != null && appInfo.icon != 0) {
+                } else if (appInfo != null && appInfo.icon != 0 &&
+                        (ai.themedIcon != 0 || iconResources.get(appInfo.icon) == null)) {
                     iconResources.put(appInfo.icon, ai);
                 }
             }
         }
+
         r.setIconResources(iconResources);
+        final IPackageManager pm = getPackageManager();
+        try {
+            ComposedIconInfo iconInfo = pm.getComposedIconInfo();
+            r.setComposedIconInfo(iconInfo);
+        } catch (Exception e) {
+            Log.wtf(TAG, "Failed to retrieve ComposedIconInfo", e);
+        }
     }
 
     public final int applyConfigurationToResourcesLocked(Configuration config,
@@ -349,12 +418,14 @@ public class ResourcesManager {
                     AssetManager am = r.getAssets();
                     if (am.hasThemeSupport()) {
                         r.setIconResources(null);
+                        r.setComposedIconInfo(null);
                         detachThemeAssets(am);
-                        if (config.customTheme != null) {
-                            attachThemeAssets(am, config.customTheme);
-                            attachCommonAssets(am, config.customTheme);
-                            attachIconAssets(am, config.customTheme);
-                            setActivityIcons(r);
+                        if (config.themeConfig != null) {
+                            attachThemeAssets(am, config.themeConfig);
+                            attachCommonAssets(am, config.themeConfig);
+                            if (attachIconAssets(am, config.themeConfig)) {
+                                setActivityIcons(r);
+                            }
                         }
                     }
                 }
@@ -409,7 +480,7 @@ public class ResourcesManager {
      *         removed and the theme manager has yet to revert formally back to
      *         the framework default.
      */
-    private boolean attachThemeAssets(AssetManager assets, CustomTheme theme) {
+    private boolean attachThemeAssets(AssetManager assets, ThemeConfig theme) {
         PackageInfo piTheme = null;
         PackageInfo piTarget = null;
         PackageInfo piAndroid = null;
@@ -432,18 +503,20 @@ public class ResourcesManager {
 
         try {
             piTheme = getPackageManager().getPackageInfo(
-                    theme.getThemePackageNameForApp(basePackageName), 0, UserHandle.myUserId());
+                    theme.getOverlayPkgNameForApp(basePackageName), 0,
+                    UserHandle.getCallingUserId());
             piTarget = getPackageManager().getPackageInfo(
-                    basePackageName, 0, UserHandle.myUserId());
+                    basePackageName, 0, UserHandle.getCallingUserId());
 
             // Handle special case where a system app (ex trebuchet) may have had its pkg name
             // renamed during an upgrade. basePackageName would be the manifest value which will
             // fail on getPackageInfo(). resource pkg is assumed to have the original name
             if (piTarget == null && resourcePackageName != null) {
                 piTarget = getPackageManager().getPackageInfo(resourcePackageName,
-                        0, UserHandle.myUserId());
+                        0, UserHandle.getCallingUserId());
             }
-            piAndroid = getPackageManager().getPackageInfo("android", 0, UserHandle.myUserId());
+            piAndroid = getPackageManager().getPackageInfo("android", 0,
+                    UserHandle.getCallingUserId());
         } catch (RemoteException e) {
         }
 
@@ -499,10 +572,11 @@ public class ResourcesManager {
      * @param theme
      * @return true if succes, false otherwise
      */
-    private boolean attachIconAssets(AssetManager assets, CustomTheme theme) {
+    private boolean attachIconAssets(AssetManager assets, ThemeConfig theme) {
         PackageInfo piIcon = null;
         try {
-            piIcon = getPackageManager().getPackageInfo(theme.getIconPackPkgName(), 0, UserHandle.myUserId());
+            piIcon = getPackageManager().getPackageInfo(theme.getIconPackPkgName(), 0,
+                    UserHandle.getCallingUserId());
         } catch (RemoteException e) {
         }
 
@@ -544,11 +618,11 @@ public class ResourcesManager {
      * @param theme
      * @return true if succes, false otherwise
      */
-    private boolean attachCommonAssets(AssetManager assets, CustomTheme theme) {
+    private boolean attachCommonAssets(AssetManager assets, ThemeConfig theme) {
         PackageInfo piTheme = null;
         try {
-            piTheme = getPackageManager().getPackageInfo(theme.getThemePackageName(), 0,
-                    UserHandle.myUserId());
+            piTheme = getPackageManager().getPackageInfo(theme.getOverlayPkgName(), 0,
+                    UserHandle.getCallingUserId());
         } catch (RemoteException e) {
         }
 

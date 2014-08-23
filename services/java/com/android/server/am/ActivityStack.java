@@ -974,6 +974,14 @@ final class ActivityStack {
         next.idle = false;
         next.results = null;
         next.newIntents = null;
+
+        if (next.isHomeActivity() && next.isNotResolverActivity()) {
+            ProcessRecord app = next.task.mActivities.get(0).app;
+            if (app != null && app != mService.mHomeProcess) {
+                mService.mHomeProcess = app;
+            }
+        }
+
         if (next.nowVisible) {
             // We won't get a call to reportActivityVisibleLocked() so dismiss lockscreen now.
             mStackSupervisor.dismissKeyguard();
@@ -1077,6 +1085,9 @@ final class ActivityStack {
             final TaskRecord task = mTaskHistory.get(taskNdx);
             final ArrayList<ActivityRecord> activities = task.mActivities;
             for (int activityNdx = activities.size() - 1; activityNdx >= 0; --activityNdx) {
+                if(activityNdx >= activities.size()) {
+                    continue;
+                }
                 final ActivityRecord r = activities.get(activityNdx);
                 if (r.finishing) {
                     continue;
@@ -1726,6 +1737,10 @@ final class ActivityStack {
             boolean startIt = true;
             for (int taskNdx = mTaskHistory.size() - 1; taskNdx >= 0; --taskNdx) {
                 task = mTaskHistory.get(taskNdx);
+                if (task.getTopActivity() == null) {
+                    // All activities in task are finishing.
+                    continue;
+                }
                 if (task == r.task) {
                     // Here it is!  Now, if this is not yet visible to the
                     // user, then just add it without starting; it will
@@ -1902,6 +1917,8 @@ final class ActivityStack {
         final int numActivities = activities.size();
         for (int i = numActivities - 1; i > 0; --i ) {
             ActivityRecord target = activities.get(i);
+            if (target.frontOfTask)
+                break;
 
             final int flags = target.info.flags;
             final boolean finishOnTaskLaunch =
@@ -2069,6 +2086,8 @@ final class ActivityStack {
         // Do not operate on the root Activity.
         for (int i = numActivities - 1; i > 0; --i) {
             ActivityRecord target = activities.get(i);
+            if (target.frontOfTask)
+                break;
 
             final int flags = target.info.flags;
             boolean finishOnTaskLaunch = (flags & ActivityInfo.FLAG_FINISH_ON_TASK_LAUNCH) != 0;
@@ -3399,6 +3418,7 @@ final class ActivityStack {
     boolean forceStopPackageLocked(String name, boolean doit, boolean evenPersistent, int userId) {
         boolean didSomething = false;
         TaskRecord lastTask = null;
+        ComponentName homeActivity = null;
         for (int taskNdx = mTaskHistory.size() - 1; taskNdx >= 0; --taskNdx) {
             final ArrayList<ActivityRecord> activities = mTaskHistory.get(taskNdx).mActivities;
             int numActivities = activities.size();
@@ -3416,6 +3436,14 @@ final class ActivityStack {
                             continue;
                         }
                         return true;
+                    }
+                    if (r.isHomeActivity()) {
+                        if (homeActivity != null && homeActivity.equals(r.realActivity)) {
+                            Slog.i(TAG, "Skip force-stop again " + r);
+                            continue;
+                        } else {
+                            homeActivity = r.realActivity;
+                        }
                     }
                     didSomething = true;
                     Slog.i(TAG, "  Force finishing activity " + r);

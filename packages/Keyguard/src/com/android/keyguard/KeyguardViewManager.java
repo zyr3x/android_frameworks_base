@@ -141,6 +141,8 @@ public class KeyguardViewManager {
                     Settings.AOKP.LOCKSCREEN_SEE_THROUGH), false, this);
             resolver.registerContentObserver(Settings.AOKP.getUriFor(
                     Settings.AOKP.LOCKSCREEN_BLUR_RADIUS), false, this);
+            resolver.registerContentObserver(Settings.AOKP.getUriFor(
+                    Settings.AOKP.LOCKSCREEN_NOTIFICATIONS), false, this);
         }
 
         @Override
@@ -258,8 +260,12 @@ public class KeyguardViewManager {
 
     private boolean shouldEnableScreenRotation() {
         Resources res = mContext.getResources();
+    boolean enableLockScreenRotation = Settings.AOKP.getInt(mContext.getContentResolver(),
+                Settings.AOKP.LOCKSCREEN_ROTATION, 0) != 0;
+    boolean enableAccelerometerRotation = Settings.System.getInt(mContext.getContentResolver(),
+                Settings.System.ACCELEROMETER_ROTATION, 1) != 0;
         return SystemProperties.getBoolean("lockscreen.rot_override",false)
-                || res.getBoolean(R.bool.config_enableLockScreenRotation);
+                || (enableLockScreenRotation && enableAccelerometerRotation);
     }
 
     private boolean shouldEnableTranslucentDecor() {
@@ -407,20 +413,25 @@ public class KeyguardViewManager {
                 }
                 d.setColorFilter(BACKGROUND_COLOR, PorterDuff.Mode.SRC_OVER);
                 computeCustomBackgroundBounds(d);
-                Bitmap b = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
-                Canvas c = new Canvas(b);
-                drawToCanvas(c, d);
 
-                Drawable dd = new BitmapDrawable(mContext.getResources(), b);
+                if (isLaidOut()) {
+                    Bitmap b = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+                    Canvas c = new Canvas(b);
+                    drawToCanvas(c, d);
 
-                mTransitionBackground = new TransitionDrawable(new Drawable[] {old, dd});
-                mTransitionBackground.setCrossFadeEnabled(true);
-                setBackground(mTransitionBackground);
+                    Drawable dd = new BitmapDrawable(mContext.getResources(), b);
 
-                mTransitionBackground.startTransition(200);
+                    mTransitionBackground = new TransitionDrawable(new Drawable[] {old, dd});
+                    mTransitionBackground.setCrossFadeEnabled(true);
+                    setBackground(mTransitionBackground);
 
-                mCustomBackground = newIsNull ? null : dd;
+                    mTransitionBackground.startTransition(200);
 
+                    mCustomBackground = newIsNull ? null : dd;
+                } else {
+                    setBackground(d);
+                    mCustomBackground = newIsNull ? null : d;
+                }
             }
             invalidate();
         }
@@ -736,17 +747,12 @@ public class KeyguardViewManager {
         if (DEBUG) Log.d(TAG, "onScreenTurnedOn()");
         mScreenOn = true;
 
-        final IBinder token;
-
-        // If keyguard is disabled, we need to inform PhoneWindowManager with a null
+        // If keyguard is not showing, we need to inform PhoneWindowManager with a null
         // token so it doesn't wait for us to draw...
-        final boolean disabled =
-                mLockPatternUtils.isLockScreenDisabled() && !mLockPatternUtils.isSecure();
-        if (mKeyguardHost == null || disabled) {
-            token = null;
-        } else {
-            token = mKeyguardHost.getWindowToken();
-        }
+        final IBinder token = isShowing() ? mKeyguardHost.getWindowToken() : null;
+
+        if (DEBUG && token == null) Slog.v(TAG, "send wm null token: "
+                + (mKeyguardHost == null ? "host was null" : "not showing"));
 
         if (mKeyguardView != null) {
             mKeyguardView.onScreenTurnedOn();

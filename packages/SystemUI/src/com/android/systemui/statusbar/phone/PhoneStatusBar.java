@@ -44,7 +44,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
-import android.content.res.CustomTheme;
+import android.content.res.ThemeConfig;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.graphics.Canvas;
@@ -280,7 +280,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
     // last theme that was applied in order to detect theme change (as opposed
     // to some other configuration change).
-    CustomTheme mCurrentTheme;
+    ThemeConfig mCurrentTheme;
     private boolean mRecreating = false;
 
     // for disabling the status bar
@@ -307,6 +307,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             }
         }
     };
+
+    private int mInitialHeadsUpDecay;
 
     // ensure quick settings is disabled until the current user makes it through the setup wizard
     private boolean mUserSetup = false;
@@ -339,8 +341,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         @Override
         public void onChange(boolean selfChange) {
             boolean wasUsing = mUseHeadsUp;
-            mUseHeadsUp = ENABLE_HEADS_UP && 0 != Settings.Global.getInt(
-                    mContext.getContentResolver(), SETTING_HEADS_UP, 0);
+            mUseHeadsUp = ENABLE_HEADS_UP && Settings.AOKP.getIntForUser(
+                    mContext.getContentResolver(),
+                    Settings.AOKP.HEADS_UP_NOTIFICATION, 0, UserHandle.USER_CURRENT) == 1;
             Log.d(TAG, "heads up is " + (mUseHeadsUp ? "enabled" : "disabled"));
             if (wasUsing != mUseHeadsUp) {
                 if (!mUseHeadsUp) {
@@ -357,7 +360,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     private void updateBatteryIcons() {
         if (mBattery != null && mCircleBattery != null) {
             mBattery.updateSettings();
+            mBattery.setColors(false);
             mCircleBattery.updateSettings();
+            mCircleBattery.setColors(false);
         }
     }
 
@@ -388,9 +393,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                 .getDefaultDisplay();
         updateDisplaySize();
 
-        CustomTheme currentTheme = mContext.getResources().getConfiguration().customTheme;
+        ThemeConfig currentTheme = mContext.getResources().getConfiguration().themeConfig;
         if (currentTheme != null) {
-            mCurrentTheme = (CustomTheme)currentTheme.clone();
+            mCurrentTheme = (ThemeConfig)currentTheme.clone();
         }
 
         mLocationController = new LocationController(mContext);
@@ -408,12 +413,12 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         mHeadsUpObserver.onChange(true); // set up
         if (ENABLE_HEADS_UP) {
             mContext.getContentResolver().registerContentObserver(
-                    Settings.Global.getUriFor(SETTING_HEADS_UP), true,
-                    mHeadsUpObserver);
-            mSettingsObserver = new SettingsObserver(new Handler());
-            mSettingsObserver.observe();
-            updateSettings();
+                    Settings.AOKP.getUriFor(Settings.AOKP.HEADS_UP_NOTIFICATION), true,
+                    mHeadsUpObserver, mCurrentUserId);
         }
+        mSettingsObserver = new SettingsObserver(new Handler());
+        mSettingsObserver.observe();
+        updateSettings();
     }
 
     // ================================================================================
@@ -423,6 +428,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         final Context context = mContext;
 
         Resources res = context.getResources();
+
+        mInitialHeadsUpDecay = mContext.getResources().getInteger(R.integer.heads_up_sensitivity_delay);
 
         updateDisplaySize(); // populates mDisplayMetrics
         loadDimens();
@@ -710,7 +717,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
         mNetworkController.setListener(this);
         mBattery = (BatteryMeterView) mStatusBarView.findViewById(R.id.battery);
+        mBattery.setColors(false);
         mCircleBattery = (BatteryCircleMeterView) mStatusBarView.findViewById(R.id.circle_battery);
+        mCircleBattery.setColors(false);
 
         return mStatusBarView;
     }
@@ -890,7 +899,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         if (DEBUG) Log.v(TAG, "addNavigationBar: about to add " + mNavigationBarView);
         if (mNavigationBarView == null) return;
 
-        CustomTheme newTheme = mContext.getResources().getConfiguration().customTheme;
+        ThemeConfig newTheme = mContext.getResources().getConfiguration().themeConfig;
         if (newTheme != null &&
                 (mCurrentTheme == null || !mCurrentTheme.equals(newTheme))) {
             // Nevermind, this will be re-created
@@ -905,7 +914,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     private void repositionNavigationBar() {
         if (mNavigationBarView == null || !mNavigationBarView.isAttachedToWindow()) return;
 
-        CustomTheme newTheme = mContext.getResources().getConfiguration().customTheme;
+        ThemeConfig newTheme = mContext.getResources().getConfiguration().themeConfig;
         if (newTheme != null &&
                 (mCurrentTheme == null || !mCurrentTheme.equals(newTheme))) {
             // Nevermind, this will be re-created
@@ -950,17 +959,23 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     }
 
     private void addHeadsUpView() {
+        if (mHeadsUpNotificationView != null && mHeadsUpNotificationView.isAttachedToWindow()) {
+            return;
+        }
+
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_STATUS_BAR_PANEL, // above the status bar!
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                    | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-                    | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                    | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    | WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
-                    | WindowManager.LayoutParams.FLAG_SPLIT_TOUCH,
-                PixelFormat.TRANSLUCENT);
-        lp.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                      | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                      | WindowManager.LayoutParams.FLAG_SPLIT_TOUCH,
+                PixelFormat.TRANSPARENT);
+
+        // this will allow HeadsUp to run in an overlay on devices that support this
+        if (ActivityManager.isHighEndGfx()) {
+            lp.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+        }
+
         lp.gravity = Gravity.TOP;
         lp.y = getStatusBarHeight();
         lp.setTitle("Heads Up");
@@ -971,7 +986,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     }
 
     private void removeHeadsUpView() {
-        mWindowManager.removeView(mHeadsUpNotificationView);
+        if (mHeadsUpNotificationView != null && mHeadsUpNotificationView.isAttachedToWindow()) {
+            mWindowManager.removeView(mHeadsUpNotificationView);
+        }
     }
 
     public void refreshAllStatusBarIcons() {
@@ -1016,7 +1033,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         if (shadeEntry == null) {
             return;
         }
-        if (mUseHeadsUp && shouldInterrupt(notification)) {
+        if (mUseHeadsUp && shouldInterrupt(notification) && mStatusBarView.panelsEnabled()) {
             if (DEBUG) Log.d(TAG, "launching notification in heads up mode");
             Entry interruptionCandidate = new Entry(key, notification, null);
             if (inflateViews(interruptionCandidate, mHeadsUpNotificationView.getHolder())) {
@@ -1062,9 +1079,24 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     public void resetHeadsUpDecayTimer() {
         if (mUseHeadsUp && mHeadsUpNotificationDecay > 0
                 && mHeadsUpNotificationView.isClearable()) {
-            mHandler.removeMessages(MSG_HIDE_HEADS_UP);
-            mHandler.sendEmptyMessageDelayed(MSG_HIDE_HEADS_UP, mHeadsUpNotificationDecay);
+
+            final boolean sbVisible = (mSystemUiVisibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0
+                    || (mStatusBarMode & View.STATUS_BAR_TRANSIENT) != 0;
+            if (!sbVisible) {
+                mHandler.removeMessages(MSG_HIDE_HEADS_UP);
+                mHandler.sendEmptyMessageDelayed(MSG_HIDE_HEADS_UP, 700);
+            } else {
+                mHandler.removeMessages(MSG_HIDE_HEADS_UP);
+                mHandler.sendEmptyMessageDelayed(MSG_HIDE_HEADS_UP, mHeadsUpNotificationDecay);
+            }
+
         }
+    }
+
+    @Override
+    public void hideHeadsUp() {
+        mHandler.removeMessages(MSG_HIDE_HEADS_UP);
+        mHandler.sendEmptyMessage(MSG_HIDE_HEADS_UP);
     }
 
     public void removeNotification(IBinder key) {
@@ -1414,6 +1446,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         if ((diff & StatusBarManager.DISABLE_EXPAND) != 0) {
             if ((state & StatusBarManager.DISABLE_EXPAND) != 0) {
                 animateCollapsePanels();
+                hideHeadsUp();
             }
         }
 
@@ -2245,6 +2278,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         setNavigationIconHints(
                 altBack ? (mNavigationIconHints | NAVIGATION_HINT_BACK_ALT)
                         : (mNavigationIconHints & ~NAVIGATION_HINT_BACK_ALT));
+        if (vis > 0) {
+            mHandler.sendEmptyMessage(MSG_HIDE_HEADS_UP);
+        }
     }
 
     @Override
@@ -2724,10 +2760,12 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     private void setHeadsUpVisibility(boolean vis) {
         if (!ENABLE_HEADS_UP) return;
         if (DEBUG) Log.v(TAG, (vis ? "showing" : "hiding") + " heads up window");
-        mHeadsUpNotificationView.setVisibility(vis ? View.VISIBLE : View.GONE);
-        if (!vis) {
-            if (DEBUG) Log.d(TAG, "setting heads up entry to null");
-            mInterruptingNotificationEntry = null;
+        if (mHeadsUpNotificationView != null && mHeadsUpNotificationView.isAttachedToWindow()) {
+            mHeadsUpNotificationView.setVisibility(vis ? View.VISIBLE : View.GONE);
+            if (!vis) {
+                if (DEBUG) Log.d(TAG, "setting heads up entry to null");
+                mInterruptingNotificationEntry = null;
+            }
         }
     }
 
@@ -2768,7 +2806,11 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
     private void recreateStatusBar() {
         mRecreating = true;
+
+        removeHeadsUpView();
+
         mStatusBarContainer.removeAllViews();
+        mStatusBarContainer.clearDisappearingChildren();
 
         // extract icons from the soon-to-be recreated viewgroup.
         int nIcons = mStatusIcons.getChildCount();
@@ -2791,6 +2833,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
         makeStatusBarView();
         repositionNavigationBar();
+        addHeadsUpView();
 
         // recreate StatusBarIconViews.
         for (int i = 0; i < nIcons; i++) {
@@ -2810,6 +2853,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         mStatusBarContainer.addView(mStatusBarWindow);
 
         updateExpandedViewPos(EXPANDED_LEAVE_ALONE);
+        checkBarModes();
         mRecreating = false;
     }
 
@@ -2836,10 +2880,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         final Resources res = context.getResources();
 
         // detect theme change.
-        CustomTheme newTheme = res.getConfiguration().customTheme;
+        ThemeConfig newTheme = res.getConfiguration().themeConfig;
         if (newTheme != null &&
                 (mCurrentTheme == null || !mCurrentTheme.equals(newTheme))) {
-            mCurrentTheme = (CustomTheme)newTheme.clone();
+            mCurrentTheme = (ThemeConfig)newTheme.clone();
             recreateStatusBar();
         } else {
 

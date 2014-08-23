@@ -39,6 +39,12 @@ class SurfaceControl;
 class BootAnimation : public Thread, public IBinder::DeathRecipient
 {
 public:
+    enum {
+        eOrientationDefault     = 0,
+        eOrientation90          = 1,
+        eOrientation180         = 2,
+        eOrientation270         = 3,
+    };
                 BootAnimation();
     virtual     ~BootAnimation();
 
@@ -79,7 +85,7 @@ private:
     };
 
     status_t initTexture(Texture* texture, AssetManager& asset, const char* name);
-    status_t initTexture(void* buffer, size_t len);
+    status_t initTexture(const Animation::Frame& frame);
     bool android();
     bool movie();
 

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2014 The CyanogenMod Project
  * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1927,6 +1928,7 @@ public class WifiStateMachine extends StateMachine {
     private static final String FLAGS_STR = "flags=";
     private static final String SSID_STR = "ssid=";
     private static final String DELIMITER_STR = "====";
+    private static final String AGE_STR = "age=";
     private static final String END_STR = "####";
 
     /**
@@ -1998,6 +2000,8 @@ public class WifiStateMachine extends StateMachine {
             final int bssidStrLen = BSSID_STR.length();
             final int flagLen = FLAGS_STR.length();
 
+            final long now = SystemClock.elapsedRealtime();
+
             for (String line : lines) {
                 if (line.startsWith(BSSID_STR)) {
                     bssid = new String(line.getBytes(), bssidStrLen, line.length() - bssidStrLen);
@@ -2021,6 +2025,14 @@ public class WifiStateMachine extends StateMachine {
                     try {
                         tsf = Long.parseLong(line.substring(TSF_STR.length()));
                     } catch (NumberFormatException e) {
+                        tsf = 0;
+                    }
+                } else if (line.startsWith(AGE_STR)) {
+                    try {
+                        tsf = now - Long.parseLong(line.substring(AGE_STR.length()));
+                        tsf *= 1000; // Convert mS -> uS
+                    } catch (NumberFormatException e) {
+                        loge("Invalid timestamp: " + line);
                         tsf = 0;
                     }
                 } else if (line.startsWith(FLAGS_STR)) {
@@ -2348,11 +2360,13 @@ public class WifiStateMachine extends StateMachine {
         mLastNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
     }
 
-    private void handleSupplicantConnectionLoss() {
+    private void handleSupplicantConnectionLoss(boolean killSupplicant) {
         /* Socket connection can be lost when we do a graceful shutdown
         * or when the driver is hung. Ensure supplicant is stopped here.
         */
-        mWifiMonitor.killSupplicant(mP2pSupported);
+        if (killSupplicant){
+            mWifiMonitor.killSupplicant(mP2pSupported);
+        }
         mWifiNative.closeSupplicantConnection();
         sendSupplicantConnectionChangedBroadcast(false);
         setWifiState(WIFI_STATE_DISABLED);
@@ -2902,7 +2916,7 @@ public class WifiStateMachine extends StateMachine {
                     break;
                 case WifiMonitor.SUP_DISCONNECTION_EVENT:  /* Supplicant connection lost */
                     loge("Connection lost, restart supplicant");
-                    handleSupplicantConnectionLoss();
+                    handleSupplicantConnectionLoss(true);
                     handleNetworkDisconnect();
                     mSupplicantStateTracker.sendMessage(CMD_RESET_SUPPLICANT_STATE);
                     if (mP2pSupported) {
@@ -2971,13 +2985,13 @@ public class WifiStateMachine extends StateMachine {
                     break;
                 case WifiMonitor.SUP_DISCONNECTION_EVENT:
                     if (DBG) log("Supplicant connection lost");
-                    handleSupplicantConnectionLoss();
+                    handleSupplicantConnectionLoss(false);
                     transitionTo(mInitialState);
                     break;
                 case CMD_STOP_SUPPLICANT_FAILED:
                     if (message.arg1 == mSupplicantStopFailureToken) {
                         loge("Timed out on a supplicant stop, kill and proceed");
-                        handleSupplicantConnectionLoss();
+                        handleSupplicantConnectionLoss(true);
                         transitionTo(mInitialState);
                     }
                     break;
@@ -3769,6 +3783,12 @@ public class WifiStateMachine extends StateMachine {
                     NetworkUpdateResult result = mWifiConfigStore.saveNetwork(config);
                     if (mWifiInfo.getNetworkId() == result.getNetworkId()) {
                         if (result.hasIpChanged()) {
+                            try {
+                                log("clear IP address on connection");
+                                mNwService.clearInterfaceAddresses(mInterfaceName);
+                            } catch (Exception e) {
+                                loge("Failed to clear addresses" + e);
+                            }
                             log("Reconfiguring IP on connection");
                             transitionTo(mObtainingIpState);
                         }

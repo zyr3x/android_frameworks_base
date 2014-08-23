@@ -56,6 +56,8 @@
   <string name="action_app_window">Ventana de la aplicación</string>
   <string name="action_ribbon">Cinta AOKP</string>
   <string name="action_app">App/contextual personalizado</string>
+  <string name="action_dpad_left">Flecha izquierda </string>
+  <string name="action_dpad_right">Flecha derecha</string>
   <string name="app_killed_message">Aplicación finalizada</string>
   <string name="global_action_screenshot">Captura de pantalla</string>
   <string name="global_action_screenrecord">Grabación de pantalla</string>
@@ -77,4 +79,20 @@
   <string name="notify_turn_tethering_off_title">Desactivar Tethering</string>
   <string name="permlab_preventpower">Prevenir tecla encendido/apagado</string>
   <string name="permdesc_preventpower">Permitir a una aplicación reemplazar la tecla de encendido/apagado</string>
+  <string name="permlab_accessThemeService">Acceso al servicio de temas</string>
+  <string name="permdesc_accessThemeService">Permitir que la aplicación pueda acceder al servicio de temas. Esto no debería ser nunca necesario con aplicaciones normales.</string>
+  <string name="permlab_readThemes">leer la información de su tema</string>
+  <string name="permdesc_readThemesDesc">Permite que la aplicación lea sus temas y
+       pueda determinar que tema está aplicado.</string>
+  <string name="permlab_writeThemes">Modificar sus temas</string>
+  <string name="permdesc_writeThemesDesc">Permite que la aplicación introduzca nuevos temas y
+       modificar el tema que este aplicado.</string>
+  <string name="permlab_setKeyguardWallpaper">Establecer el fondo de pantalla de bloqueo</string>
+  <string name="permdesc_setKeyguardWallpaper">Permite que otras aplicaciones cambien el fondo de pantalla de bloqueo.</string>
+  <string name="permgrouplab_security">Seguridad</string>
+  <string name="permgroupdesc_security">Permisos relacionados con información de seguridad del dispositivo.</string>
+  <string name="permlab_readPhoneBlacklist">Leer lista negra del teléfono</string>
+  <string name="permdesc_readPhoneBlacklist">Permite que la aplicación lea la información sobre los números de teléfono bloqueados para llamadas o mensajes entrantes.</string>
+  <string name="permlab_changePhoneBlacklist">cambiar la lista negra del teléfono</string>
+  <string name="permdesc_changePhoneBlacklist">Permite que la aplicación cambie los números de teléfono bloqueados para llamadas o mensajes entrantes.</string>
 </resources>

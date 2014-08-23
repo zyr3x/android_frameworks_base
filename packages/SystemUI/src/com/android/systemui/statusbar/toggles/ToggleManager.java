@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.pm.ThemeUtils;
 import android.database.ContentObserver;
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;
@@ -86,8 +87,7 @@ public class ToggleManager {
     public static final String WIFI_TETHER_TOGGLE = "WIFITETHER";
     // public static final String BT_TETHER_TOGGLE = "BTTETHER";
     public static final String USB_TETHER_TOGGLE = "USBTETHER";
-    public static final String TWOG_TOGGLE = "2G";
-    public static final String LTE_TOGGLE = "LTE";
+    public static final String NETWORK_TOGGLE = "NETWORK";
     public static final String FAV_CONTACT_TOGGLE = "FAVCONTACT";
     public static final String SOUND_STATE_TOGGLE = "SOUNDSTATE";
     public static final String NAVBAR_HIDE_TOGGLE = "NAVBARHIDE";
@@ -102,6 +102,7 @@ public class ToggleManager {
     public static final String WIRELESS_ADB_TOGGLE = "WIRELESSADB";
     public static final String IMMERSIVE_MODE_TOGGLE = "IMMERSIVE_MODE";
     public static final String SCREENRECORD_TOGGLE = "SCREENRECORD";
+    public static final String HEADSUP_TOGGLE = "HEADSUP";
 
     private int mStyle;
 
@@ -154,16 +155,12 @@ public class ToggleManager {
             }
             toggleMap.put(TORCH_TOGGLE, TorchToggle.class);
             toggleMap.put(USB_TETHER_TOGGLE, UsbTetherToggle.class);
-            // if
-            // (((TelephonyManager)mContext.getSystemService(Context.TELEPHONY_SERVICE))
-            // .getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-            // toggleMap.put(TWOG_TOGGLE, TwoGToggle.class);
-            // }
-            // if (TelephonyManager.getLteOnCdmaModeStatic() ==
-            // PhoneConstants.LTE_ON_CDMA_TRUE
-            // || TelephonyManager.getLteOnGsmModeStatic() != 0) {
-            // toggleMap.put(LTE_TOGGLE, LteToggle.class);
-            // }
+            if (((TelephonyManager)mContext.getSystemService(Context.TELEPHONY_SERVICE))
+                    .getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
+                ((TelephonyManager)mContext.getSystemService(Context.TELEPHONY_SERVICE))
+                    .getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                toggleMap.put(NETWORK_TOGGLE, NetworkToggle.class);
+            }
             toggleMap.put(FAV_CONTACT_TOGGLE, FavoriteUserToggle.class);
             // toggleMap.put(NAVBAR_HIDE_TOGGLE, NavbarHideToggle.class);
             toggleMap.put(QUICKRECORD_TOGGLE, QuickRecordToggle.class);
@@ -180,6 +177,7 @@ public class ToggleManager {
             // no toggle
             // toggleMap.put(BT_TETHER_TOGGLE, null);
             toggleMap.put(IMMERSIVE_MODE_TOGGLE, ImmersiveModeToggle.class);
+            toggleMap.put(HEADSUP_TOGGLE, HeadsUpToggle.class);
         }
         return toggleMap;
     }
@@ -193,12 +191,17 @@ public class ToggleManager {
         mBroadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Intent broadcast = new Intent(ACTION_BROADCAST_TOGGLES);
-                broadcast.putExtra("toggle_bundle", ToggleManager.this.getAvailableToggles());
-                context.sendBroadcast(broadcast);
+                if (ACTION_REQUEST_TOGGLES.equals(intent.getAction())) {
+                    Intent broadcast = new Intent(ACTION_BROADCAST_TOGGLES);
+                    broadcast.putExtra("toggle_bundle", ToggleManager.this.getAvailableToggles());
+                    context.sendBroadcast(broadcast);
+                } else if (ThemeUtils.ACTION_THEME_CHANGED.equals(intent.getAction())) {
+                    updateSettings();
+                }
             }
         };
         mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(ACTION_REQUEST_TOGGLES));
+        mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(ThemeUtils.ACTION_THEME_CHANGED));
     }
 
     public void cleanup() {
