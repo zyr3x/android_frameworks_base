@@ -221,7 +221,7 @@ public class ThemeService extends IThemeService.Stub {
 
         updateConfiguration(componentMap);
 
-        killLaunchers();
+        killLaunchers(componentMap);
 
         postFinish(true, componentMap);
         mIsThemeApplying = false;
@@ -561,6 +561,9 @@ public class ThemeService extends IThemeService.Stub {
                     PackageManager pm = mContext.getPackageManager();
                     PackageInfo pi = pm.getPackageInfo(pkgName, 0);
                     if (pi.legacyThemeInfos != null && pi.legacyThemeInfos.length > 0) {
+                        // we need to get an instance of the WallpaperManager using the theme's
+                        // context so it can retrieve the resource
+                        wm = WallpaperManager.getInstance(themeContext);
                         wm.setResource(pi.legacyThemeInfos[0].wallpaperResourceId);
                     } else {
                         return false;
@@ -644,7 +647,12 @@ public class ThemeService extends IThemeService.Stub {
 
     // Kill the current Home process, they tend to be evil and cache
     // drawable references in all apps
-    private void killLaunchers() {
+    private void killLaunchers(Map<String, String> componentMap) {
+        if (!(componentMap.containsKey(ThemesColumns.MODIFIES_ICONS)
+                || componentMap.containsKey(ThemesColumns.MODIFIES_OVERLAYS))) {
+            return;
+        }
+
         final ActivityManager am =
                 (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
         final PackageManager pm = mContext.getPackageManager();

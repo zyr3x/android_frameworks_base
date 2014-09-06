@@ -25,6 +25,7 @@ import static android.app.StatusBarManager.windowStateToString;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_OPAQUE;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_SEMI_TRANSPARENT;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_TRANSLUCENT;
+import static com.android.systemui.statusbar.phone.BarTransitions.MODE_TRANSPARENT;
 import static com.android.systemui.statusbar.phone.BarTransitions.MODE_LIGHTS_OUT;
 
 import android.animation.Animator;
@@ -97,6 +98,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.android.internal.statusbar.StatusBarIcon;
+import com.android.internal.util.cm.ActionUtils;
 import com.android.systemui.BatteryMeterView.BatteryMeterMode;
 import com.android.systemui.DemoMode;
 import com.android.systemui.DockBatteryMeterView;
@@ -1099,43 +1101,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         @Override
         public boolean onLongClick(View v) {
             cancelPreloadingRecentTasksList();
-
-            final ActivityManager am =
-                    (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
-            ActivityManager.RunningTaskInfo lastTask = getLastTask(am);
-
-            if (lastTask != null) {
-                if (DEBUG) Log.d(TAG, "switching to " + lastTask.topActivity.getPackageName());
-                final ActivityOptions opts = ActivityOptions.makeCustomAnimation(mContext,
-                        R.anim.last_app_in, R.anim.last_app_out);
-                am.moveTaskToFront(lastTask.id, ActivityManager.MOVE_TASK_NO_USER_ACTION,
-                        opts.toBundle());
-                return true;
-            }
-            return false;
-        }
-
-        private ActivityManager.RunningTaskInfo getLastTask(final ActivityManager am) {
-            final String defaultHomePackage = resolveCurrentLauncherPackage();
-            List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(5);
-
-            for (int i = 1; i < tasks.size(); i++) {
-                String packageName = tasks.get(i).topActivity.getPackageName();
-                if (!packageName.equals(defaultHomePackage)
-                        && !packageName.equals(mContext.getPackageName())) {
-                    return tasks.get(i);
-                }
-            }
-
-            return null;
-        }
-
-        private String resolveCurrentLauncherPackage() {
-            final Intent launcherIntent = new Intent(Intent.ACTION_MAIN)
-                    .addCategory(Intent.CATEGORY_HOME);
-            final PackageManager pm = mContext.getPackageManager();
-            final ResolveInfo launcherInfo = pm.resolveActivity(launcherIntent, 0);
-            return launcherInfo.activityInfo.packageName;
+            return ActionUtils.switchToLastApp(mContext, mCurrentUserId);
         }
     };
 
@@ -2522,6 +2488,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             if (!showing) {
                 mStatusBarView.collapseAllPanels(false);
             }
+            checkBarModes();
         }
         if (mNavigationBarView != null
                 && window == StatusBarManager.WINDOW_NAVIGATION_BAR
@@ -2638,22 +2605,25 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             // if dual panels are expandable, force the status bar opaque on any interaction
             sbMode = MODE_OPAQUE;
         }
-        checkBarMode(sbMode, mStatusBarWindowState, mStatusBarView.getBarTransitions());
+        boolean animateSb = shouldAnimateBarTransition(sbMode, mStatusBarWindowState);
+        mStatusBarView.getBarTransitions().transitionTo(sbMode, animateSb);
         if (mNavigationBarView != null) {
-            checkBarMode(mNavigationBarMode,
-                    mNavigationBarWindowState, mNavigationBarView.getBarTransitions());
+            mNavigationBarView.getBarTransitions().transitionTo(mNavigationBarMode,
+                    shouldAnimateBarTransition(mNavigationBarMode, mNavigationBarWindowState));
+            int sbbMode = mStatusBarWindowState == WINDOW_STATE_HIDDEN ? MODE_TRANSPARENT : sbMode;
+            mNavigationBarView.getStatusBarBlockerTransitions().transitionTo(sbbMode, animateSb);
         }
     }
 
-    private void checkBarMode(int mode, int windowState, BarTransitions transitions) {
-        final boolean anim = (mScreenOn == null || mScreenOn) && windowState != WINDOW_STATE_HIDDEN;
-        transitions.transitionTo(mode, anim);
+    private boolean shouldAnimateBarTransition(int mode, int windowState) {
+        return (mScreenOn == null || mScreenOn) && windowState != WINDOW_STATE_HIDDEN;
     }
 
     private void finishBarAnimations() {
         mStatusBarView.getBarTransitions().finishAnimations();
         if (mNavigationBarView != null) {
             mNavigationBarView.getBarTransitions().finishAnimations();
+            mNavigationBarView.getStatusBarBlockerTransitions().finishAnimations();
         }
     }
 
@@ -2885,6 +2855,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             pw.print("  mNavigationBarMode=");
             pw.println(BarTransitions.modeToString(mNavigationBarMode));
             dumpBarTransitions(pw, "mNavigationBarView", mNavigationBarView.getBarTransitions());
+            dumpBarTransitions(pw, "mStatusBarBlocker",
+                    mNavigationBarView.getStatusBarBlockerTransitions());
         }
 
         pw.print("  mNavigationBarView=");
@@ -3674,6 +3646,8 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                 }
                 if (mNavigationBarView != null) {
                     mNavigationBarView.getBarTransitions().transitionTo(barMode, animate);
+                    mNavigationBarView.getStatusBarBlockerTransitions().transitionTo(
+                            barMode, animate);
                 }
             }
         }
