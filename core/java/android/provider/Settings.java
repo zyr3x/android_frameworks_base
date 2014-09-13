@@ -6831,6 +6831,12 @@ public final class Settings {
         public static final String QUIET_HOURS_DIM = "quiet_hours_dim";
 
         /**
+         * Whether to remove the system sounds during quiet hours.
+         * @hide
+         */
+        public static final String QUIET_HOURS_SYSTEM = "quiet_hours_system";
+
+        /**
          * Immersive Mode
          * @hide
          */
@@ -7177,6 +7183,13 @@ public final class Settings {
          * @hide
          */
         public static final String SMART_PHONE_CALLER = "smart_phone_caller";
+
+        /**
+         * Detailed incall info
+         *
+         * @hide
+         */
+        public static final String DETAILED_INCALL_INFO = "detailed_incall_info";
 
         /**
          * The hostname for this device
