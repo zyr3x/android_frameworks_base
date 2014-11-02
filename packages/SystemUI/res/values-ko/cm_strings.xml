@@ -55,6 +55,9 @@
   <string name="location_mode_sensors_only_title">기기 전용</string>
   <string name="quick_settings_expanded_desktop">확장</string>
   <string name="quick_settings_expanded_desktop_off">보통</string>
+  <plurals name="quick_settings_bluetooth_multi_label">
+    <item quantity="other">%1$d대 연결됨</item>
+  </plurals>
   <string name="quick_settings_camera_error_connect">카메라에 연결할 수 없습니다.</string>
   <string name="navbar_dialog_title">할당할 작업을 선택</string>
   <string name="navbar_home_button">홈 버튼</string>
@@ -67,6 +70,7 @@
   <string name="navbar_menu_big_button">메뉴 버튼</string>
   <string name="advanced_dev_option_wipe_app">앱 데이터 삭제</string>
   <string name="advanced_dev_option_force_stop">강제 종료</string>
+  <string name="advanced_dev_option_uninstall">제거</string>
   <string name="accessibility_dock_battery_level">독의 배터리는 <xliff:g id="number">%d</xliff:g>퍼센트입니다.</string>
   <string name="screenshot_delete_action">삭제</string>
   <string name="screenshot_delete_confirmation">스크린샷이 삭제되었습니다.</string>

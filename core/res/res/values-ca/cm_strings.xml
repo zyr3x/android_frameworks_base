@@ -85,6 +85,8 @@
   <string name="permdesc_setKeyguardWallpaper">Permet que una app estableixi el fons de la pantalla de bloqueig.</string>
   <string name="permlab_useHardwareFramework">utilitza el marc de hardware</string>
   <string name="permdesc_useHardwareFramework">Permet a una app accedir al marc de hardware de CM.</string>
+  <string name="permlab_keyguardApplicationWidget">Defineix el widget de l\'aplicació de bloqueig de pantalla</string>
+  <string name="permdesc_keyguardApplicationWidget">Permet a una app definir el widget de l\'aplicació de bloqueig de pantalla.</string>
   <string name="immersive_mode_confirmation_bottom">Deslliça cap amunt des de baix per sortir de la pantalla sencera.</string>
   <string name="app_ops_access_camera">accedir a la càmera</string>
   <string name="app_ops_access_location">accedir a la teva ubicació</string>
@@ -165,10 +167,14 @@
   <string name="lockscreen_sim_error_message_short">Targeta invàlida.</string>
   <string name="lockscreen_airplane_mode_on">Mode avió</string>
   <string name="lockscreen_sim_locked_message_cm">La targeta SIM/RUIM està bloquejada.</string>
+  <string name="pinpuk_attempts">\nIntents restants:</string>
   <string name="stk_cc_ussd_to_dial">Petició SS modificada a una petició DIAL.</string>
   <string name="stk_cc_ussd_to_ss">Petició USSD modificada a una petició SS.</string>
   <string name="stk_cc_ussd_to_ussd">Petició USSD modificada a una nova petició USSD.</string>
   <string name="stk_cc_ss_to_dial">Petició SS modificada a una petició DIAL.</string>
   <string name="stk_cc_ss_to_ussd">Petició SS modificada a una petició USSD.</string>
   <string name="stk_cc_ss_to_ss">Petició SS modificada a una nova petició SS.</string>
+  <string name="theme_install_error_title">No ha pogut instal·lar el tema</string>
+  <string name="theme_install_error_message">%s no s\'ha pogut instal·lar</string>
+  <string name="storage_uicc">Emmagatzematge UICC</string>
 </resources>
