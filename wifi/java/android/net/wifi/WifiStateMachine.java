@@ -161,6 +161,7 @@ public class WifiStateMachine extends StateMachine {
     private int mLastNetworkId;
     private boolean mEnableRssiPolling = false;
     private boolean mEnableBackgroundScan = false;
+    private boolean mDisabled5GhzFrequencies = false;
     private int mRssiPollToken = 0;
     private int mReconnectCount = 0;
     /* 3 operational states for STA operation: CONNECT_MODE, SCAN_ONLY_MODE, SCAN_ONLY_WIFI_OFF_MODE
@@ -2374,27 +2375,6 @@ public class WifiStateMachine extends StateMachine {
 
     void handlePreDhcpSetup() {
         mDhcpActive = true;
-        if (!mBluetoothConnectionActive) {
-            /*
-             * There are problems setting the Wi-Fi driver's power
-             * mode to active when bluetooth coexistence mode is
-             * enabled or sense.
-             * <p>
-             * We set Wi-Fi to active mode when
-             * obtaining an IP address because we've found
-             * compatibility issues with some routers with low power
-             * mode.
-             * <p>
-             * In order for this active power mode to properly be set,
-             * we disable coexistence mode until we're done with
-             * obtaining an IP address.  One exception is if we
-             * are currently connected to a headset, since disabling
-             * coexistence would interrupt that connection.
-             */
-            // Disable the coexistence mode
-            mWifiNative.setBluetoothCoexistenceMode(
-                    mWifiNative.BLUETOOTH_COEXISTENCE_MODE_DISABLED);
-        }
 
         /* Disable power save and suspend optimizations during DHCP */
         // Note: The order here is important for now. Brcm driver changes
@@ -2402,6 +2382,10 @@ public class WifiStateMachine extends StateMachine {
         // TODO: Remove this comment when the driver is fixed.
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, false);
         mWifiNative.setPowerSave(false);
+
+        // Disable the coexistence mode
+        mWifiNative.setBluetoothCoexistenceMode(
+                    mWifiNative.BLUETOOTH_COEXISTENCE_MODE_DISABLED);
 
         stopBatchedScan();
 
@@ -2434,15 +2418,15 @@ public class WifiStateMachine extends StateMachine {
     }
 
     void handlePostDhcpSetup() {
-        /* Restore power save and suspend optimizations */
-        setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, true);
-        mWifiNative.setPowerSave(true);
-
         mWifiP2pChannel.sendMessage(WifiP2pService.BLOCK_DISCOVERY, WifiP2pService.DISABLED);
 
         // Set the coexistence mode back to its default value
         mWifiNative.setBluetoothCoexistenceMode(
                 mWifiNative.BLUETOOTH_COEXISTENCE_MODE_SENSE);
+
+        /* Restore power save and suspend optimizations */
+        setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, true);
+        mWifiNative.setPowerSave(true);
 
         mDhcpActive = false;
 
@@ -3213,6 +3197,14 @@ public class WifiStateMachine extends StateMachine {
                         mFrequencyBand.set(band);
                         // flush old data - like scan results
                         mWifiNative.bssFlush();
+                        if (mFrequencyBand.get() == WifiManager.WIFI_FREQUENCY_BAND_2GHZ) {
+                            mWifiNative.disable5GHzFrequencies(true);
+                            mDisabled5GhzFrequencies = true;
+                        } else if ((mFrequencyBand.get() != WifiManager.WIFI_FREQUENCY_BAND_2GHZ)
+                                && (mDisabled5GhzFrequencies)) {
+                            mWifiNative.disable5GHzFrequencies(false);
+                            mDisabled5GhzFrequencies = false;
+                        }
                         //Fetch the latest scan results when frequency band is set
                         startScanNative(WifiNative.SCAN_WITH_CONNECTION_SETUP);
                     } else {
