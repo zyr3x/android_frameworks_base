@@ -1,4 +1,4 @@
-/*
+ /*
 **
 ** Copyright 2007, The Android Open Source Project
 **
@@ -857,7 +857,7 @@ android_media_MediaPlayer_setNextMediaPlayer(JNIEnv *env, jobject thiz, jobject 
             "setNextMediaPlayer failed." );
     ;
 }
-
+/*
 static jboolean
 android_media_MediaPlayer_suspend(JNIEnv *env, jobject thiz)
 {
@@ -889,7 +889,7 @@ android_media_MediaPlayer_resume(JNIEnv *env, jobject thiz)
 
     return true;
 }
-
+*/
 // ----------------------------------------------------------------------------
 
 static JNINativeMethod gMethods[] = {
@@ -934,8 +934,8 @@ static JNINativeMethod gMethods[] = {
     {"native_pullBatteryData", "(Landroid/os/Parcel;)I",        (void *)android_media_MediaPlayer_pullBatteryData},
     {"native_setRetransmitEndpoint", "(Ljava/lang/String;I)I",  (void *)android_media_MediaPlayer_setRetransmitEndpoint},
     {"setNextMediaPlayer",  "(Landroid/media/MediaPlayer;)V",   (void *)android_media_MediaPlayer_setNextMediaPlayer},
-    {"_suspend",             "()Z",                             (void *)android_media_MediaPlayer_suspend},
-    {"_resume",              "()Z",                             (void *)android_media_MediaPlayer_resume},
+//    {"_suspend",             "()Z",                             (void *)android_media_MediaPlayer_suspend},
+//    {"_resume",              "()Z",                             (void *)android_media_MediaPlayer_resume},
 };
 
 static const char* const kClassPathName = "android/media/MediaPlayer";
