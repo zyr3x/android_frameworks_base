@@ -204,7 +204,7 @@ static void nativeSetDirtyRect(JNIEnv* env, jclass clazz,
     rect.right = env->GetIntField(dirtyRect, gRectClassInfo.right);
     rect.bottom = env->GetIntField(dirtyRect, gRectClassInfo.bottom);
 
-    surface->setDirtyRect(&rect);
+//    surface->setDirtyRect(&rect);
 #endif
 }
 
