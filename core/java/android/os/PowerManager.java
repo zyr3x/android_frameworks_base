@@ -641,6 +641,19 @@ public final class PowerManager {
     }
 
     /**
+     * Forces the device to wake up from sleep only if
+     * nothing is blocking the proximity sensor
+     * @see #wakeUp
+     * @hide
+     */
+    public void wakeUpWithProximityCheck(long time) {
+        try {
+            mService.wakeUpWithProximityCheck(time);
+        } catch (RemoteException e) {
+        }
+    }
+
+    /**
      * Forces the device to start napping.
      * <p>
      * If the device is currently awake, starts dreaming, otherwise does nothing.
@@ -1124,5 +1137,21 @@ public final class PowerManager {
         }
     }
 
+    /**
+     * Gets the default button brightness value.
+     * @hide
+     */
+    public int getDefaultButtonBrightness() {
+        return mContext.getResources().getInteger(
+                com.android.internal.R.integer.config_buttonBrightnessSettingDefault);
+    }
 
+    /**
+     * Gets the default keyboard brightness value.
+     * @hide
+     */
+    public int getDefaultKeyboardBrightness() {
+        return mContext.getResources().getInteger(
+                com.android.internal.R.integer.config_keyboardBrightnessSettingDefault);
+    }
 }
