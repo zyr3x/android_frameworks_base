@@ -27,6 +27,7 @@ import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -63,6 +64,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -1618,25 +1620,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             upgradeVersion = 99;
         }
 
-        if (upgradeVersion == 99) {
-            if (mUserHandle == UserHandle.USER_OWNER) {
-                loadScreenAnimationStyle(db);
-            }
-            upgradeVersion = 100;
-        }
-
-        if (upgradeVersion == 100) {
-            // We're setting some new defaults on these for certain devices, and adding
-            // a default for animator duration. Load them if the user hasn't set them.
-            db.beginTransaction();
-            SQLiteStatement stmt = null;
-            try {
-                stmt = db.compileStatement("INSERT OR IGNORE INTO system(name,value) VALUES(?,?);");
-                loadDefaultAnimationSettings(stmt);
-                    db.setTransactionSuccessful();
-            } finally {
-                db.endTransaction();
-            }
+        if (upgradeVersion == 99 || upgradeVersion == 100) {
             upgradeVersion = 101;
         }
 
@@ -1969,26 +1953,48 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             stmt = db.compileStatement("INSERT OR IGNORE INTO system(name,value)"
                     + " VALUES(?,?);");
 
+            Resources res = mContext.getResources();
+
+            int defaultVolume = res.getInteger(R.integer.def_volume_music);
             loadSetting(stmt, Settings.System.VOLUME_MUSIC,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_MUSIC]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_MUSIC]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_ring);
             loadSetting(stmt, Settings.System.VOLUME_RING,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_RING]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_RING]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_system);
             loadSetting(stmt, Settings.System.VOLUME_SYSTEM,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_SYSTEM]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_SYSTEM]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_voice);
             loadSetting(
                     stmt,
                     Settings.System.VOLUME_VOICE,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_VOICE_CALL]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_VOICE_CALL]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_alarm);
             loadSetting(stmt, Settings.System.VOLUME_ALARM,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_ALARM]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_ALARM]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_notification);
             loadSetting(
                     stmt,
                     Settings.System.VOLUME_NOTIFICATION,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_NOTIFICATION]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_NOTIFICATION]));
+
+            defaultVolume = res.getInteger(R.integer.def_volume_btsco);
             loadSetting(
                     stmt,
                     Settings.System.VOLUME_BLUETOOTH_SCO,
-                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_BLUETOOTH_SCO]);
+                    (defaultVolume >= 0 ? defaultVolume :
+                    AudioManager.DEFAULT_STREAM_VOLUME[AudioManager.STREAM_BLUETOOTH_SCO]));
 
             // By default:
             // - ringtones, notification, system and music streams are affected by ringer mode
@@ -2073,27 +2079,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    private void loadScreenAnimationStyle(SQLiteDatabase db) {
-        db.beginTransaction();
-        SQLiteStatement stmt = null;
-        try {
-            stmt = db.compileStatement("INSERT OR REPLACE INTO system(name,value)"
-                    + " VALUES(?,?);");
-            loadIntegerSetting(stmt, Settings.System.SCREEN_ANIMATION_STYLE,
-                    R.integer.def_screen_animation_style);
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-            if (stmt != null) stmt.close();
-        }
-    }
-
     private void loadRibbonSetting(SQLiteStatement stmt) {
         String tiles = mContext.getResources().getString(R.string.def_quick_settings_ribbon_tiles);
         if (!TextUtils.isEmpty(tiles)) {
             loadSetting(stmt, Settings.System.QS_QUICK_ACCESS, "1");
             loadSetting(stmt, Settings.System.QS_QUICK_ACCESS_LINKED, "0");
             loadSetting(stmt, Settings.System.QUICK_SETTINGS_RIBBON_TILES, tiles);
+        }
+    }
+
+    private void loadHeadsUpSetting(SQLiteStatement stmt) {
+        String dndValues = mContext.getResources()
+                .getString(R.string.def_heads_up_notification_dnd_values);
+        String blackListValues = mContext.getResources()
+                .getString(R.string.def_heads_up_notification_blacklist_values);
+        if (!TextUtils.isEmpty(dndValues)) {
+            loadSetting(stmt, Settings.System.HEADS_UP_NOTIFICATION, "0");
+            loadSetting(stmt, Settings.System.HEADS_UP_CUSTOM_VALUES, dndValues);
+            loadSetting(stmt, Settings.System.HEADS_UP_BLACKLIST_VALUES, blackListValues);
+        }
+    }
+
+    private void loadProtectedSmsSetting(SQLiteStatement stmt) {
+        String[] regAddresses = mContext.getResources()
+                .getStringArray(R.array.def_protected_sms_list_values);
+        if (regAddresses.length > 0) {
+            loadSetting(stmt, Settings.Secure.PROTECTED_SMS_ADDRESSES, TextUtils.join("|", regAddresses));
         }
     }
 
@@ -2178,7 +2189,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             loadIntegerSetting(stmt, Settings.System.DOUBLE_TAP_SLEEP_GESTURE,
                     R.integer.def_double_tap_sleep_gesture);
 
+            loadIntegerSetting(stmt, Settings.System.SCREEN_ANIMATION_STYLE,
+                    R.integer.def_screen_animation_style);
+
+            loadIntegerSetting(stmt, Settings.System.ENABLE_PEOPLE_LOOKUP,
+                    R.integer.def_people_lookup);
+
+            loadDefaultAnimationSettings(stmt);
+
             loadRibbonSetting(stmt);
+
+            loadHeadsUpSetting(stmt);
 
         } finally {
             if (stmt != null) stmt.close();
@@ -2197,11 +2218,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     private void loadDefaultAnimationSettings(SQLiteStatement stmt) {
-        loadFractionSetting(stmt, Settings.System.WINDOW_ANIMATION_SCALE,
+        loadFractionSetting(stmt, Settings.Global.WINDOW_ANIMATION_SCALE,
                 R.fraction.def_window_animation_scale, 1);
-        loadFractionSetting(stmt, Settings.System.TRANSITION_ANIMATION_SCALE,
+        loadFractionSetting(stmt, Settings.Global.TRANSITION_ANIMATION_SCALE,
                 R.fraction.def_window_transition_scale, 1);
-        loadFractionSetting(stmt, Settings.System.ANIMATOR_DURATION_SCALE,
+        loadFractionSetting(stmt, Settings.Global.ANIMATOR_DURATION_SCALE,
                 R.fraction.def_animator_duration_scale, 1);
     }
 
@@ -2302,6 +2323,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     R.bool.def_user_setup_complete);
 
             loadDefaultThemeSettings(stmt);
+
+            loadProtectedSmsSetting(stmt);
         } finally {
             if (stmt != null) stmt.close();
         }
@@ -2490,6 +2513,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
             loadIntegerSetting(stmt, Settings.Global.WIFI_SUSPEND_OPTIMIZATIONS_ENABLED,
                     R.integer.def_wifi_suspend_optimizations_enabled);
+
+            loadIntegerSetting(stmt, Settings.Global.SEND_ACTION_APP_ERROR,
+                    R.integer.def_send_action_app_error);
+
+            loadDefaultAnimationSettings(stmt);
 
             // --- New global settings start here
             loadQuickBootSetting(db);

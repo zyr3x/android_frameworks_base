@@ -91,6 +91,9 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
         StatusBarPanel, Animator.AnimatorListener {
     static final String TAG = "RecentsPanelView";
     static final boolean DEBUG = PhoneStatusBar.DEBUG || false;
+    private static final String  ANDROID_SETTINGS = "com.android.settings";
+    private static final String ANDROID_PROTECTED_APPS =
+            "com.android.settings.applications.ProtectedAppsActivity";
     private PopupMenu mPopup;
     private View mRecentsScrim;
     private View mRecentsNoApps;
@@ -112,6 +115,7 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
     private int mRecentItemLayoutId;
     private boolean mHighEndGfx;
     private ImageView mClearRecents;
+    private ImageView mProtectedApps;
 
     private int mDragPositionX;
     private int mDragPositionY;
@@ -371,6 +375,7 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
             mRecentsNoApps.setAlpha(1f);
             mRecentsNoApps.setVisibility(noApps ? View.VISIBLE : View.INVISIBLE);
             mClearRecents.setVisibility(noApps ? View.GONE : View.VISIBLE);
+            mProtectedApps.setVisibility(noProtectedApps() ? View.GONE : View.VISIBLE);
             onAnimationEnd(null);
             setFocusable(true);
             setFocusableInTouchMode(true);
@@ -385,56 +390,11 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
         }
     }
 
-    private boolean handleThumbnailTouch(MotionEvent m, View thumb) {
-        // If we have two touches, let user snap on top or bottom
-        int pointerCount = m.getPointerCount();
-        if (pointerCount == 2) {
-            int action = m.getActionMasked();
-            int currX = (int) m.getX(1);
-            int currY = (int) m.getY(1);
-            
-            switch (action) {
-                case MotionEvent.ACTION_DOWN:
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    mDragPositionX = currX;
-                    mDragPositionY = currY;
-                    break;
-
-                case MotionEvent.ACTION_UP:
-                    handleThumbnailDragRelease(thumb);
-                    break;
-
-                case MotionEvent.ACTION_MOVE:
-                    int diffX = currX - mDragPositionX;
-                    int diffY = currY - mDragPositionY;
-                    thumb.setTranslationX(thumb.getTranslationX() + diffX);
-                    thumb.setTranslationY(thumb.getTranslationY() + diffY);
-                    mDragPositionX = currX;
-                    mDragPositionY = currY;
-                    break;
-            }
-            
-            return true;
-        } else {
-            mDragPositionX = 0;
-            mDragPositionY = 0;
-            return false;
-        }
-    }
-
-    private void handleThumbnailDragRelease(View view) {
-        ViewHolder holder = (ViewHolder) view.getTag();
-        WindowManager wm = (WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE);
-        Display display = wm.getDefaultDisplay();
-        Point size = new Point();
-        display.getSize(size);
-        int width = size.x;
-        int height = size.y;
-        if (mDragPositionY < height/2) {
-            openInSplitView(holder, 0);
-        } else {
-            openInSplitView(holder, 1);
-        }
+    private boolean noProtectedApps() {
+        String protectedComponents = Settings.Secure.getString(mContext.getContentResolver(),
+                Settings.Secure.PROTECTED_COMPONENTS);
+        protectedComponents = protectedComponents == null ? "" : protectedComponents;
+        return (protectedComponents.equals(""));
     }
 
     protected void onAttachedToWindow () {
@@ -540,6 +500,22 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
                 public void onClick(View v) {
                     mRecentsContainer.removeAllViewsInLayout();
                     mClearRecents.setVisibility(View.INVISIBLE);
+                }
+            });
+        }
+        mProtectedApps = (ImageView) findViewById(R.id.protected_apps);
+        if (mProtectedApps != null){
+            mProtectedApps.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dismiss();
+                    // Launch protected components
+                    Intent intent = new Intent();
+                    intent.setClassName(ANDROID_SETTINGS, ANDROID_PROTECTED_APPS);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    mContext.startActivityAsUser(intent, null,
+                        new UserHandle(UserHandle.USER_CURRENT));
                 }
             });
         }
@@ -964,6 +940,7 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
             Settings.Secure.DEVELOPMENT_SHORTCUT, 0) == 0) {
             popup.getMenu().findItem(R.id.recent_force_stop).setVisible(false);
             popup.getMenu().findItem(R.id.recent_wipe_app).setVisible(false);
+            popup.getMenu().findItem(R.id.recent_uninstall).setVisible(false);
         } else {
             ViewHolder viewHolder = (ViewHolder) selectedView.getTag();
             if (viewHolder != null) {
@@ -978,7 +955,9 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
                           == ApplicationInfo.FLAG_SYSTEM
                           || mDpm.packageHasActiveAdmins(ad.packageName)) {
                         popup.getMenu()
-                        .findItem(R.id.notification_inspect_item_wipe_app).setEnabled(false);
+                        .findItem(R.id.recent_wipe_app).setEnabled(false);
+                        popup.getMenu()
+                        .findItem(R.id.recent_uninstall).setEnabled(false);
                     } else {
                         Log.d(TAG, "Not a 'special' application");
                     }
@@ -1023,11 +1002,18 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
                     } else {
                         throw new IllegalStateException("Oops, no tag on view " + selectedView);
                     }
-                } else if (item.getItemId() == R.id.recent_add_split_view) {
-                    // Either start a new activity in split view, or move the current task
-                    // to front, but resized
-                    ViewHolder holder = (ViewHolder)selectedView.getTag();
-                    openInSplitView(holder, -1);
+                } else if (item.getItemId() == R.id.recent_uninstall) {
+                    ViewHolder viewHolder = (ViewHolder) selectedView.getTag();
+                    if (viewHolder != null) {
+                        final TaskDescription ad = viewHolder.taskDescription;
+                        Uri packageURI = Uri.parse("package:"+ad.packageName);
+                        Intent uninstallIntent = new Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageURI);
+                        uninstallIntent.putExtra(Intent.EXTRA_UNINSTALL_ALL_USERS, true);
+                        mContext.startActivity(uninstallIntent);
+                        ((ViewGroup) mRecentsContainer).removeViewInLayout(selectedView);
+                    } else {
+                        throw new IllegalStateException("Oops, no tag on view " + selectedView);
+                    }
                 } else {
                     return false;
                 }
@@ -1072,6 +1058,12 @@ public class RecentsPanelView extends FrameLayout implements OnItemClickListener
             lp.topMargin = insets.top;
             lp.rightMargin = insets.right;
             mClearRecents.setLayoutParams(lp);
+        }
+        if (mProtectedApps != null) {
+            MarginLayoutParams lp = (MarginLayoutParams) mProtectedApps.getLayoutParams();
+            lp.topMargin = insets.top;
+            lp.rightMargin = insets.right;
+            mProtectedApps.setLayoutParams(lp);
         }
 
         return super.fitSystemWindows(insets);

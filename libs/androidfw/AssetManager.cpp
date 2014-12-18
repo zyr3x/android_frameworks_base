@@ -462,6 +462,7 @@ String8 AssetManager::getPkgName(const char *apkPath) {
 
         }
 
+        tree.uninit();
         manifestAsset->close();
         return pkgName;
     }
@@ -2135,6 +2136,7 @@ bool AssetManager::fncScanAndMergeDirLocked(
     }
 
     mergeInfoLocked(pMergedInfo, pContents);
+    delete pContents;
     return true;
 }
 
